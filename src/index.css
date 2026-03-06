@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  #roster-content-to-print table tbody td,
+  #roster-content-to-print table thead th {
+    color: black !important;
+  }
+}

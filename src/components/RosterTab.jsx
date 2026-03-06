@@ -333,7 +333,7 @@ export default function RosterTab() {
                       </div>
                       <span className="font-medium text-sm text-slate-900 truncate">{member.name}</span>
                     </div>
-                    <div className="flex justify-between text-xs text-slate-600 bg-slate-50 p-2 rounded-md border border-slate-100">
+                    <div className="grid grid-cols-3 gap-1 text-xs text-slate-600 bg-slate-50 p-2 rounded-md border border-slate-100">
                       <div className="flex flex-col">
                         <span className="text-[10px] text-slate-400 uppercase">{t('shifts_worked')}</span>
                         <span className="font-semibold text-slate-700">{stats.shiftsWorked}</span>
@@ -343,8 +343,22 @@ export default function RosterTab() {
                         <span className="font-semibold text-slate-700">{stats.hoursWorked}</span>
                       </div>
                       <div className="flex flex-col text-right">
-                        <span className="text-[10px] text-slate-400 uppercase">{t('days_off')}</span>
-                        <span className="font-semibold text-slate-700">{stats.daysOff}</span>
+                        <span className="text-[10px] text-slate-400 uppercase">{t('rest_days')}</span>
+                        <span className="font-semibold text-green-600">{stats.restDays}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 text-xs text-slate-600 bg-slate-50 p-1.5 rounded-md border border-slate-100">
+                      <div className="flex flex-col text-center">
+                        <span className="text-[10px] text-orange-400 uppercase">{t('holidays_taken')}</span>
+                        <span className="font-semibold text-orange-600">{stats.holidays}</span>
+                      </div>
+                      <div className="flex flex-col text-center">
+                        <span className="text-[10px] text-red-400 uppercase">{t('sick_days_taken')}</span>
+                        <span className="font-semibold text-red-600">{stats.sickDays}</span>
+                      </div>
+                      <div className="flex flex-col text-center">
+                        <span className="text-[10px] text-pink-400 uppercase">{t('wish_days_taken')}</span>
+                        <span className="font-semibold text-pink-600">{stats.wishDays}</span>
                       </div>
                     </div>
                   </div>

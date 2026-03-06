@@ -396,9 +396,18 @@ export function RosterProvider({ children }) {
   const getMonthlyStats = useCallback((memberId) => {
     let daysWorked = 0;
     let hoursWorked = 0;
+    let holidays = 0;
+    let sickDays = 0;
+    let wishDays = 0;
 
     for (let d = 1; d <= daysCount; d++) {
       const dateKey = getDateKey(currentYear, currentMonth, d);
+
+      const offType = timeOff[dateKey]?.[memberId];
+      if (offType === 'holiday') holidays++;
+      else if (offType === 'sick') sickDays++;
+      else if (offType === 'wish') wishDays++;
+
       for (const shift of shifts) {
         if (assignments[dateKey]?.[shift.id]?.includes(memberId)) {
           daysWorked++;
@@ -407,8 +416,17 @@ export function RosterProvider({ children }) {
         }
       }
     }
-    return { shiftsWorked: daysWorked, daysOff: daysCount - daysWorked, hoursWorked: Math.round(hoursWorked * 10) / 10 };
-  }, [daysCount, currentYear, currentMonth, shifts, assignments]);
+
+    const restDays = daysCount - daysWorked - holidays - sickDays - wishDays;
+    return {
+      shiftsWorked: daysWorked,
+      hoursWorked: Math.round(hoursWorked * 10) / 10,
+      holidays,
+      sickDays,
+      wishDays,
+      restDays,
+    };
+  }, [daysCount, currentYear, currentMonth, shifts, assignments, timeOff]);
 
   const coverageAlerts = useMemo(() => {
     const alerts = {};

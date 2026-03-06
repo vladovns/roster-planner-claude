@@ -86,9 +86,9 @@ export default function RosterTab() {
       // Remove coverage alerts and leave/events rows from PDF
       clone.querySelectorAll('[data-print-hide]').forEach(el => el.remove());
 
-      // Force all table cell text to black for readability
+      // Force all table cell borders to black for readability
       clone.querySelectorAll('table td, table th').forEach(el => {
-        el.style.color = 'black';
+        el.style.borderColor = 'black';
       });
 
       wrapper.appendChild(clone);

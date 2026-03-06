@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 @media print {
-  #roster-content-to-print table tbody td,
-  #roster-content-to-print table thead th {
-    color: black !important;
+  #roster-content-to-print table td,
+  #roster-content-to-print table th {
+    border-color: black !important;
   }
 }

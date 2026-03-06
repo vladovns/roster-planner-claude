@@ -83,6 +83,9 @@ export default function RosterTab() {
         tableEl.style.height = 'auto';
       }
 
+      // Remove coverage alerts and leave/events rows from PDF
+      clone.querySelectorAll('[data-print-hide]').forEach(el => el.remove());
+
       wrapper.appendChild(clone);
 
       const opt = {
@@ -166,14 +169,14 @@ export default function RosterTab() {
             <table className="w-full min-w-[768px] print:min-w-0 table-fixed divide-y divide-slate-200 border-collapse text-center">
               <thead className="bg-slate-100 sticky top-0 z-20 shadow-sm">
                 <tr>
-                  <th rowSpan={2} className="px-2 py-2 text-left text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider w-[70px] sm:w-[120px] border-r border-slate-200 bg-slate-100 sticky left-0 z-30 shadow-[1px_0_0_0_rgba(226,232,240,1)]">
+                  <th rowSpan={2} className="px-2 py-2 text-left text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider w-[70px] sm:w-[120px] border-r border-slate-200 bg-slate-100 sticky left-0 z-30 shadow-[1px_0_0_0_rgba(226,232,240,1)] print:static print:shadow-none print:py-1 print:w-[80px]">
                     {t('datum')}
                   </th>
                   {daysArray.map(day => {
                     const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
                     const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
                     return (
-                      <th key={`day-${day}`} className={`p-0 h-6 sm:h-8 text-[10px] sm:text-sm font-bold border-b border-r border-slate-200 ${isFriSat ? 'bg-blue-100 text-blue-900' : 'bg-slate-100 text-slate-700'}`}>
+                      <th key={`day-${day}`} className={`p-0 h-6 sm:h-8 print:h-5 text-[10px] sm:text-sm print:text-[8px] font-bold border-b border-r border-slate-200 ${isFriSat ? 'bg-blue-100 text-blue-900' : 'bg-slate-100 text-slate-700'}`}>
                         {day}
                       </th>
                     );
@@ -185,7 +188,7 @@ export default function RosterTab() {
                     const dayOfWeekLocal = getDayOfWeekShortLocale(currentYear, currentMonth, day);
                     const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
                     return (
-                      <th key={`dow-${day}`} className={`p-0 h-4 sm:h-5 text-[8px] sm:text-[10px] font-medium border-r border-slate-200 uppercase ${isFriSat ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'}`}>
+                      <th key={`dow-${day}`} className={`p-0 h-4 sm:h-5 print:h-3 text-[8px] sm:text-[10px] print:text-[7px] font-medium border-r border-slate-200 uppercase ${isFriSat ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'}`}>
                         {dayOfWeekLocal}
                       </th>
                     );
@@ -195,8 +198,8 @@ export default function RosterTab() {
               <tbody className="bg-white divide-y divide-slate-200">
                 {members.map((member, idx) => (
                   <tr key={member.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
-                    <td className="px-2 py-0 border-r border-slate-200 sticky left-0 bg-inherit shadow-[1px_0_0_0_rgba(226,232,240,1)] z-10 text-left h-9 sm:h-12">
-                      <div className="font-medium text-slate-900 text-[10px] sm:text-xs truncate max-w-[54px] sm:max-w-[104px]" title={member.name}>{member.name}</div>
+                    <td className="px-2 py-0 border-r border-slate-200 sticky left-0 bg-inherit shadow-[1px_0_0_0_rgba(226,232,240,1)] z-10 text-left h-9 sm:h-12 print:h-6 print:static print:shadow-none">
+                      <div className="font-medium text-slate-900 text-[10px] sm:text-xs print:text-[9px] truncate max-w-[54px] sm:max-w-[104px] print:max-w-none" title={member.name}>{member.name}</div>
                     </td>
                     {daysArray.map(day => {
                       const dateKey = getDateKey(currentYear, currentMonth, day);
@@ -241,10 +244,10 @@ export default function RosterTab() {
                             if (isBirthday || isFixedOff) return;
                             setEditingCell({ dateKey, dateLabel: `${day} ${getDayOfWeekShortLocale(currentYear, currentMonth, day)}`, memberId: member.id, currentShiftId: assignedShiftId, currentOffType: memberOffType });
                           }}
-                          className={`p-0 border-r border-slate-200 text-center text-[9px] sm:text-[11px] transition-colors ${!isBirthday && !isFixedOff ? 'cursor-pointer hover:bg-slate-200/50' : ''} ${baseBg} ${cellClass}`}
+                          className={`p-0 border-r border-slate-200 text-center text-[9px] sm:text-[11px] print:text-[8px] transition-colors ${!isBirthday && !isFixedOff ? 'cursor-pointer hover:bg-slate-200/50' : ''} ${baseBg} ${cellClass}`}
                           style={cellStyle}
                         >
-                          <div className="flex items-center justify-center w-full h-9 sm:h-12">
+                          <div className="flex items-center justify-center w-full h-9 sm:h-12 print:h-6">
                             {display}
                           </div>
                         </td>
@@ -254,7 +257,7 @@ export default function RosterTab() {
                 ))}
 
                 {/* Leave & Events Row */}
-                <tr className="bg-slate-50/80 border-t-2 border-slate-300">
+                <tr data-print-hide className="bg-slate-50/80 border-t-2 border-slate-300 print:hidden">
                   <td className="px-2 py-0 border-r border-slate-200 sticky left-0 bg-slate-100 shadow-[1px_0_0_0_rgba(226,232,240,1)] z-10 text-left h-12 sm:h-16">
                     <div className="font-semibold text-slate-700 text-[9px] sm:text-[11px] uppercase tracking-wider">{t('leave_events')}</div>
                   </td>
@@ -288,7 +291,7 @@ export default function RosterTab() {
                 </tr>
 
                 {/* Coverage Alerts Row */}
-                <tr className="bg-red-50/80 border-t-2 border-red-200">
+                <tr data-print-hide className="bg-red-50/80 border-t-2 border-red-200 print:hidden">
                   <td className="px-2 py-0 border-r border-red-200 sticky left-0 bg-red-50 shadow-[1px_0_0_0_rgba(254,202,202,1)] z-10 text-left h-12 sm:h-16">
                     <div className="font-bold text-red-700 text-[9px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" /> <span className="hidden sm:inline">{t('coverage_alerts')}</span>
@@ -322,11 +325,11 @@ export default function RosterTab() {
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
               {t('monthly_summary')} ({currentDate.toLocaleString(langMap[language] || 'en-US', { month: 'long', year: 'numeric' })})
             </h3>
-            <div className="flex gap-3 pb-1 w-max print:flex-wrap">
+            <div className="flex gap-3 pb-1 w-max print:flex-wrap print:w-full print:gap-2">
               {members.map(member => {
                 const stats = getMonthlyStats(member.id);
                 return (
-                  <div key={member.id} className="w-[180px] bg-white border border-slate-200 shadow-sm rounded-lg p-3 flex flex-col gap-2 shrink-0">
+                  <div key={member.id} className="w-[180px] bg-white border border-slate-200 shadow-sm rounded-lg p-3 flex flex-col gap-2 shrink-0 print:w-[140px] print:p-2 print:gap-1 print:rounded-md">
                     <div className="flex items-center gap-2">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${member.color}`}>
                         {member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}

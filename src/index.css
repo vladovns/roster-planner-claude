@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  #roster-content-to-print table td,
+  #roster-content-to-print table th,
+  #roster-content-to-print table thead,
+  #roster-content-to-print table tbody,
+  #roster-content-to-print table tr {
+    border-color: black !important;
+    --tw-divide-opacity: 1 !important;
+    --tw-divide-color: black !important;
+  }
+}

@@ -1,7 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { useRoster } from '../../context/RosterContext';
-import { DEFAULT_HOLIDAY_ALLOWANCE } from '../../utils/helpers';
 
 export default function EditMemberModal() {
   const { t, editingMember, setEditingMember, roles, updateMember } = useRoster();
@@ -37,10 +36,6 @@ export default function EditMemberModal() {
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 mb-1">{t('birthday')}</label>
               <input type="date" name="birthday" defaultValue={editingMember.birthday} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-500" />
-            </div>
-            <div className="w-full sm:w-32">
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t('holiday_allowance')}</label>
-              <input type="number" min="0" max="365" name="holidayAllowance" defaultValue={editingMember.holidayAllowance || DEFAULT_HOLIDAY_ALLOWANCE} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
             </div>
           </div>
           <div className="pt-2 flex justify-end gap-3">

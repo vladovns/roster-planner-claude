@@ -124,7 +124,16 @@ export function useAutoScheduler() {
       const dateKey = getDateKey(currentYear, currentMonth, d);
       if (!newAssignments[dateKey]) newAssignments[dateKey] = {};
 
+      const prioritizedShifts = [...shifts].sort((a, b) => (a.priority || 10) - (b.priority || 10));
+
+      // Determine which shifts need staff today
+      const activeShifts = prioritizedShifts.filter(s => {
+        const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
+        return target > 0;
+      });
+
       let available = [];
+      let mandatoryRestMembers = []; // members blocked only by 5-day consecutive rule
       members.forEach(m => {
         const isBirthday = m.birthday && m.birthday.substring(5) === dateKey.substring(5);
         const isOff = timeOff[dateKey]?.[m.id];
@@ -153,22 +162,33 @@ export function useAutoScheduler() {
             currentStretchShift[m.id] = null;
           }
           consecutiveDays[m.id] = 0;
+          mandatoryRestMembers.push(m);
           return;
         }
 
         available.push(m);
       });
 
+      // Calculate minimum staffing: need at least 2 employees (earliest + latest)
+      const totalMinStaffing = activeShifts.reduce((sum, s) => {
+        const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
+        return sum + Math.max(target, 0);
+      }, 0);
+      const minRequired = Math.max(totalMinStaffing, 2);
+
+      // If not enough available employees, pull back mandatory-rest members
+      // to guarantee minimum coverage (breaking the 5-consecutive-day rule)
+      if (available.length < minRequired && mandatoryRestMembers.length > 0) {
+        const deficit = minRequired - available.length;
+        const pullBack = mandatoryRestMembers.slice(0, deficit);
+        pullBack.forEach(m => {
+          available.push(m);
+        });
+      }
+
       let workedToday = new Set();
       let assignedShiftToday = {};
 
-      const prioritizedShifts = [...shifts].sort((a, b) => (a.priority || 10) - (b.priority || 10));
-
-      // Determine which shifts need staff today and total demand
-      const activeShifts = prioritizedShifts.filter(s => {
-        const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
-        return target > 0;
-      });
       const totalDemand = activeShifts.reduce((sum, s) => {
         const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
         return sum + target - (newAssignments[dateKey]?.[s.id]?.length || 0);

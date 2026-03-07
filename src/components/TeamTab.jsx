@@ -1,13 +1,13 @@
 import React from 'react';
-import { Users, UserPlus, Trash2, Pencil, ShieldCheck, Calendar, Gift, Sun, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, UserPlus, Trash2, Pencil, ShieldCheck, Calendar, Gift, ChevronUp, ChevronDown } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
-import { formatDateDDMMYYYY, DEFAULT_HOLIDAY_ALLOWANCE } from '../utils/helpers';
+import { formatDateDDMMYYYY } from '../utils/helpers';
 
 export default function TeamTab() {
   const {
     t, roles, members,
     addMember, removeMember, moveMemberUp, moveMemberDown,
-    setEditingMember, getHolidaysUsed,
+    setEditingMember,
   } = useRoster();
 
   return (
@@ -28,7 +28,6 @@ export default function TeamTab() {
             {roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
           </select>
           <input type="number" name="maxDaysOff" placeholder={t('max_days_off')} title={t('max_days_off')} min="0" max="31" className="flex-1 min-w-[110px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
-          <input type="number" name="holidayAllowance" placeholder={t('holiday_allowance')} title={t('holiday_allowance')} min="0" max="365" defaultValue={DEFAULT_HOLIDAY_ALLOWANCE} className="flex-1 min-w-[110px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
           <input type="date" name="birthday" title={t('birthday')} className="flex-1 min-w-[140px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-500" />
           <button type="submit" disabled={roles.length === 0} className="flex-none whitespace-nowrap bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition flex items-center justify-center gap-2 font-medium text-sm">
             <UserPlus className="w-4 h-4 shrink-0" /> {t('add')}
@@ -53,7 +52,6 @@ export default function TeamTab() {
                   </span>
                   {member.maxDaysOff ? <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-emerald-500" /> {member.maxDaysOff} {t('max_days_off')}</span> : null}
                   {member.birthday ? <span className="flex items-center gap-1"><Gift className="w-3 h-3 text-indigo-400" /> {formatDateDDMMYYYY(member.birthday)}</span> : null}
-                  <span className="flex items-center gap-1"><Sun className="w-3 h-3 text-orange-400" /> {getHolidaysUsed(member.id)} / {member.holidayAllowance || DEFAULT_HOLIDAY_ALLOWANCE} Days</span>
                 </div>
               </div>
             </div>

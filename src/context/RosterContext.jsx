@@ -3,7 +3,7 @@ import { translations, langMap } from '../utils/translations';
 import {
   getDaysInMonth, getDayOfWeekShort, getDateKey, getRandomHex, generateId,
   formatDateDDMMYYYY, calculateShiftDuration, check11HourRest,
-  MEMBER_COLORS, DEFAULT_HOLIDAY_ALLOWANCE, DAY_NUMBERS,
+  MEMBER_COLORS, DAY_NUMBERS,
 } from '../utils/helpers';
 
 const RosterContext = createContext(null);
@@ -159,11 +159,10 @@ export function RosterProvider({ children }) {
     const role = formData.get('role');
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
-    const holidayAllowance = formData.get('holidayAllowance') || DEFAULT_HOLIDAY_ALLOWANCE;
 
     setMembers(prev => {
       const color = MEMBER_COLORS[prev.length % MEMBER_COLORS.length];
-      return [...prev, { id: generateId(), name, role, color, birthday, maxDaysOff, holidayAllowance: parseInt(holidayAllowance, 10) || DEFAULT_HOLIDAY_ALLOWANCE }];
+      return [...prev, { id: generateId(), name, role, color, birthday, maxDaysOff }];
     });
     e.target.reset();
   }, []);
@@ -206,12 +205,11 @@ export function RosterProvider({ children }) {
     const role = formData.get('role');
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
-    const holidayAllowance = formData.get('holidayAllowance') || DEFAULT_HOLIDAY_ALLOWANCE;
 
     setEditingMember(prev => {
       if (!prev) return null;
       setMembers(mPrev => mPrev.map(m => m.id === prev.id
-        ? { ...m, name, role, birthday, maxDaysOff, holidayAllowance: parseInt(holidayAllowance, 10) || DEFAULT_HOLIDAY_ALLOWANCE }
+        ? { ...m, name, role, birthday, maxDaysOff }
         : m
       ));
       return null;
@@ -385,14 +383,6 @@ export function RosterProvider({ children }) {
     return null;
   }, [assignments]);
 
-  const getHolidaysUsed = useCallback((memberId) => {
-    let count = 0;
-    Object.keys(timeOff).forEach(dateKey => {
-      if (dateKey.startsWith(currentYear.toString()) && timeOff[dateKey][memberId] === 'holiday') count++;
-    });
-    return count;
-  }, [timeOff, currentYear]);
-
   const getMonthlyStats = useCallback((memberId) => {
     let daysWorked = 0;
     let hoursWorked = 0;
@@ -467,7 +457,7 @@ export function RosterProvider({ children }) {
     editingRole, setEditingRole,
     downloadBackup, uploadBackup,
     handleCellUpdate, clearMonth, prevMonth, nextMonth,
-    getMemberShiftOnDate, getHolidaysUsed, getMonthlyStats,
+    getMemberShiftOnDate, getMonthlyStats,
     coverageAlerts,
   };
 

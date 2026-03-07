@@ -94,6 +94,4 @@ export const MEMBER_COLORS = [
   'bg-indigo-100 text-indigo-800', 'bg-rose-100 text-rose-800'
 ];
 
-export const DEFAULT_HOLIDAY_ALLOWANCE = 25;
-
 export const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0];

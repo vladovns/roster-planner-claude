@@ -28,6 +28,11 @@ export default function TeamTab() {
             {roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
           </select>
           <input type="number" name="maxDaysOff" placeholder={t('max_days_off')} title={t('max_days_off')} min="0" max="31" className="flex-1 min-w-[110px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
+          <select name="allocationOption" title={t('allocation_option')} className="flex-1 min-w-[160px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white text-slate-700">
+            <option value="">{t('allocation_none')}</option>
+            <option value="1" title={t('allocation_option_1_hint')}>{t('allocation_option_1')}</option>
+            <option value="2" title={t('allocation_option_2_hint')}>{t('allocation_option_2')}</option>
+          </select>
           <input type="date" name="birthday" title={t('birthday')} className="flex-1 min-w-[140px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-500" />
           <button type="submit" disabled={roles.length === 0} className="flex-none whitespace-nowrap bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition flex items-center justify-center gap-2 font-medium text-sm">
             <UserPlus className="w-4 h-4 shrink-0" /> {t('add')}
@@ -50,6 +55,7 @@ export default function TeamTab() {
                   <span className="font-medium px-2 py-0.5 bg-slate-100 rounded-md flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-slate-400" /> {member.role}
                   </span>
+                  {member.allocationOption ? <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md">{member.allocationOption === '1' ? t('allocation_option_1') : t('allocation_option_2')}</span> : null}
                   {member.maxDaysOff ? <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-emerald-500" /> {member.maxDaysOff} {t('max_days_off')}</span> : null}
                   {member.birthday ? <span className="flex items-center gap-1"><Gift className="w-3 h-3 text-indigo-400" /> {formatDateDDMMYYYY(member.birthday)}</span> : null}
                 </div>

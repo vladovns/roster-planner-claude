@@ -1,6 +1,19 @@
 import { useCallback } from 'react';
-import { getDateKey, check11HourRest } from '../utils/helpers';
+import { getDateKey, check11HourRest, calculateShiftDuration } from '../utils/helpers';
 import { useRoster } from '../context/RosterContext';
+
+/**
+ * Parses shift start hour from a time string like "08:00 - 16:00".
+ * Returns fractional hours (e.g. 8.5 for "08:30").
+ */
+function getShiftStartHour(timeStr) {
+  if (!timeStr) return 12;
+  const parts = timeStr.split(' - ');
+  if (parts.length < 2) return 12;
+  const [h, m] = parts[0].split(':').map(Number);
+  if (isNaN(h)) return 12;
+  return h + (isNaN(m) ? 0 : m / 60);
+}
 
 export function useAutoScheduler() {
   const {
@@ -15,7 +28,6 @@ export function useAutoScheduler() {
     let consecutiveDays = {};
     let mandatoryDaysOff = {};
     let currentStretchShift = {};
-    let lastStretchShift = {};
     let daysWorkedThisMonth = {};
 
     const getShiftOnDate = (dateKey, memberId) => {
@@ -35,6 +47,36 @@ export function useAutoScheduler() {
       const dayNum = dateObj.getDay().toString();
       if ((mRole.fixedDaysOff || []).map(String).includes(dayNum)) return true;
       return false;
+    };
+
+    /** Check if a given day (1-based) will be a day off for a member (look-ahead). */
+    const willBeDayOff = (dayNum, memberId, memberObj) => {
+      if (dayNum > daysCount) return true; // end of month = effectively a break
+      const dateKey = getDateKey(currentYear, currentMonth, dayNum);
+      if (timeOff[dateKey]?.[memberId]) return true;
+      if (memberObj?.birthday && memberObj.birthday.substring(5) === dateKey.substring(5)) return true;
+      const mRole = roles.find(r => r.name === memberObj?.role) || { fixedDaysOff: [] };
+      const dateObj = new Date(currentYear, currentMonth, dayNum);
+      const dayOfWeek = dateObj.getDay().toString();
+      if ((mRole.fixedDaysOff || []).map(String).includes(dayOfWeek)) return true;
+      return false;
+    };
+
+    /** Check if a member is legally eligible for a shift (11h rest + role constraints). */
+    const isEligibleForShift = (member, shift, day) => {
+      const yesterday = new Date(currentYear, currentMonth, day - 1);
+      const yDateKey = getDateKey(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+      const yShiftId = getShiftOnDate(yDateKey, member.id);
+      const yShiftTime = yShiftId ? shifts.find(s => s.id === yShiftId)?.time : null;
+
+      if (!check11HourRest(yShiftTime, shift.time)) return false;
+
+      const mRole = roles.find(r => r.name === member.role);
+      if (mRole) {
+        if (mRole.excludedShiftIds?.includes(shift.id)) return false;
+        if (mRole.preferenceType === 'only' && mRole.preferredShiftId !== shift.id) return false;
+      }
+      return true;
     };
 
     // Cross-month initialization
@@ -62,7 +104,6 @@ export function useAutoScheduler() {
 
       consecutiveDays[m.id] = streak;
       currentStretchShift[m.id] = lastShiftId;
-      lastStretchShift[m.id] = null;
       daysWorkedThisMonth[m.id] = 0;
 
       if (streak >= 5) {
@@ -89,7 +130,6 @@ export function useAutoScheduler() {
 
         if (isBirthday || isOff || isFixedDayOff) {
           if (consecutiveDays[m.id] > 0) {
-            lastStretchShift[m.id] = currentStretchShift[m.id];
             currentStretchShift[m.id] = null;
           }
           consecutiveDays[m.id] = 0;
@@ -99,7 +139,6 @@ export function useAutoScheduler() {
 
         if (consecutiveDays[m.id] >= 5) {
           mandatoryDaysOff[m.id] = minTwoDaysOff ? 2 : 1;
-          lastStretchShift[m.id] = currentStretchShift[m.id];
           currentStretchShift[m.id] = null;
           consecutiveDays[m.id] = 0;
         }
@@ -107,7 +146,6 @@ export function useAutoScheduler() {
         if (mandatoryDaysOff[m.id] > 0) {
           mandatoryDaysOff[m.id]--;
           if (consecutiveDays[m.id] > 0) {
-            lastStretchShift[m.id] = currentStretchShift[m.id];
             currentStretchShift[m.id] = null;
           }
           consecutiveDays[m.id] = 0;
@@ -139,28 +177,17 @@ export function useAutoScheduler() {
         let needed = target - currentlyAssigned.length;
 
         while (needed > 0) {
-          let legalCandidates = shiftAvailable.filter(m => {
-            const yesterday = new Date(currentYear, currentMonth, d - 1);
-            const yDateKey = getDateKey(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-            const yShiftId = getShiftOnDate(yDateKey, m.id);
-            const yShiftTime = yShiftId ? shifts.find(s => s.id === yShiftId)?.time : null;
-
-            if (!check11HourRest(yShiftTime, shift.time)) return false;
-
-            const mRole = roles.find(r => r.name === m.role);
-            if (mRole) {
-              if (mRole.excludedShiftIds?.includes(shift.id)) return false;
-              if (mRole.preferenceType === 'only' && mRole.preferredShiftId !== shift.id) return false;
-            }
-            return true;
-          });
+          let legalCandidates = shiftAvailable.filter(m => isEligibleForShift(m, shift, d));
 
           if (legalCandidates.length === 0) break;
+
+          const shiftStartHour = getShiftStartHour(shift.time);
 
           let scoredCandidates = legalCandidates.map(m => {
             let score = 0;
             const mRole = roles.find(r => r.name === m.role) || { preferenceType: 'flexible', excludedShiftIds: [] };
 
+            // Role preference scoring
             if (mRole.preferenceType === 'only' && mRole.preferredShiftId === shift.id) score -= 1000;
             else if (mRole.preferenceType === 'mainly') {
               if (mRole.preferredShiftId === shift.id) score -= 500;
@@ -169,12 +196,43 @@ export function useAutoScheduler() {
 
             const isNewStretch = (consecutiveDays[m.id] || 0) === 0;
             const currShift = currentStretchShift[m.id];
+            const allocOption = m.allocationOption;
 
-            if (!isNewStretch && currShift === shift.id) score -= 80;
-            else if (!isNewStretch && currShift !== shift.id) score += 80;
+            // --- ALLOCATION OPTION SCORING ---
+            if (allocOption === '2') {
+              // Option 2: Consistent shifts — prefer same shift throughout stretch
+              if (!isNewStretch && currShift === shift.id) score -= 80;
+              else if (!isNewStretch && currShift !== shift.id) score += 80;
+            } else if (allocOption === '1') {
+              // Option 1: Maximize hours at beginning and end of work stretch
+              // First day of stretch (after day off): prefer later/longer shifts
+              if (isNewStretch) {
+                // Later start = higher hour value = better (lower score)
+                // Normalize: assume shifts range ~6:00-22:00
+                score -= (shiftStartHour - 6) * 10;
+              } else {
+                // Check if tomorrow is a day off (last day of stretch)
+                const tomorrowIsOff = willBeDayOff(d + 1, m.id, m) || (consecutiveDays[m.id] || 0) >= 4;
+                if (tomorrowIsOff) {
+                  // Last day of stretch: prefer earlier shifts
+                  // Earlier start = lower hour value = better (lower score)
+                  score += (shiftStartHour - 6) * 10;
+                } else {
+                  // Mid-stretch: mild preference for mid-range, slight consistency
+                  if (currShift === shift.id) score -= 20;
+                  else if (currShift !== shift.id) score += 20;
+                }
+              }
+            } else {
+              // No preference: mild consistency bonus (original behavior)
+              if (!isNewStretch && currShift === shift.id) score -= 80;
+              else if (!isNewStretch && currShift !== shift.id) score += 80;
+            }
 
+            // Discourage assigning 5th consecutive day
             if (consecutiveDays[m.id] === 4) score += 500;
 
+            // Penalty if day off is nearby (preserve buffer around time off)
             const dPlus1 = new Date(currentYear, currentMonth, d + 1);
             const dMinus1 = new Date(currentYear, currentMonth, d - 1);
             const isOffNearby = timeOff[getDateKey(dPlus1.getFullYear(), dPlus1.getMonth(), dPlus1.getDate())]?.[m.id] ||
@@ -208,21 +266,7 @@ export function useAutoScheduler() {
             const daysLeftToWork = minWorkDays - (daysWorkedThisMonth[m.id] || 0);
 
             if (daysLeftToWork >= remainingDays) {
-              let eligibleShifts = prioritizedShifts.filter(shift => {
-                const yesterday = new Date(currentYear, currentMonth, d - 1);
-                const yDateKey = getDateKey(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-                const yShiftId = getShiftOnDate(yDateKey, m.id);
-                const yShiftTime = yShiftId ? shifts.find(s => s.id === yShiftId)?.time : null;
-
-                if (!check11HourRest(yShiftTime, shift.time)) return false;
-
-                const mRole = roles.find(r => r.name === m.role);
-                if (mRole) {
-                  if (mRole.excludedShiftIds?.includes(shift.id)) return false;
-                  if (mRole.preferenceType === 'only' && mRole.preferredShiftId !== shift.id) return false;
-                }
-                return true;
-              });
+              let eligibleShifts = prioritizedShifts.filter(shift => isEligibleForShift(m, shift, d));
 
               if (eligibleShifts.length > 0) {
                 eligibleShifts.sort((a, b) => {
@@ -260,7 +304,6 @@ export function useAutoScheduler() {
               mandatoryDaysOff[m.id] = 1;
             }
             if (consecutiveDays[m.id] > 0) {
-              lastStretchShift[m.id] = currentStretchShift[m.id];
               currentStretchShift[m.id] = null;
             }
             consecutiveDays[m.id] = 0;

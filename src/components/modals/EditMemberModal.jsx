@@ -37,6 +37,15 @@ export default function EditMemberModal() {
               <label className="block text-sm font-medium text-slate-700 mb-1">{t('birthday')}</label>
               <input type="date" name="birthday" defaultValue={editingMember.birthday} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-500" />
             </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t('allocation_option')}</label>
+              <select name="allocationOption" defaultValue={editingMember.allocationOption || ''} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white text-slate-700">
+                <option value="">{t('allocation_none')}</option>
+                <option value="1">{t('allocation_option_1')}</option>
+                <option value="2">{t('allocation_option_2')}</option>
+              </select>
+              <p className="text-xs text-slate-400 mt-1">{editingMember.allocationOption === '1' ? t('allocation_option_1_hint') : editingMember.allocationOption === '2' ? t('allocation_option_2_hint') : ''}</p>
+            </div>
           </div>
           <div className="pt-2 flex justify-end gap-3">
             <button type="button" onClick={() => setEditingMember(null)} className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition font-medium text-sm">{t('cancel')}</button>

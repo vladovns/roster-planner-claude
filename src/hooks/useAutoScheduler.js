@@ -160,8 +160,32 @@ export function useAutoScheduler() {
 
       const prioritizedShifts = [...shifts].sort((a, b) => (a.priority || 10) - (b.priority || 10));
 
+      // Determine which shifts need staff today and total demand
+      const activeShifts = prioritizedShifts.filter(s => {
+        const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
+        return target > 0;
+      });
+      const totalDemand = activeShifts.reduce((sum, s) => {
+        const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
+        return sum + target - (newAssignments[dateKey]?.[s.id]?.length || 0);
+      }, 0);
+      const capacityConstrained = available.length < totalDemand && activeShifts.length > 1;
+
+      // When capacity is constrained, reorder shifts so the latest shift is
+      // always covered: fill earliest first, then latest, skipping mid shifts.
+      let fillOrder;
+      if (capacityConstrained) {
+        const sorted = [...activeShifts].sort((a, b) => getShiftStartHour(a.time) - getShiftStartHour(b.time));
+        const latest = sorted.pop();   // latest shift by start time
+        const earliest = sorted.shift(); // earliest shift by start time
+        // Order: earliest, latest, then any remaining mid shifts
+        fillOrder = [earliest, latest, ...sorted].filter(Boolean);
+      } else {
+        fillOrder = prioritizedShifts;
+      }
+
       // 1. FILL SHIFTS TO MEET REQUIREMENTS
-      prioritizedShifts.forEach(shift => {
+      fillOrder.forEach(shift => {
         const target = shift.requirements?.[dayOfWeekNum] !== undefined ? shift.requirements[dayOfWeekNum] : 1;
         if (target <= 0) return;
 

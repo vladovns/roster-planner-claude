@@ -49,9 +49,13 @@ export function useAutoScheduler() {
       return false;
     };
 
-    /** Check if a given day (1-based) will be a day off for a member (look-ahead). */
-    const willBeDayOff = (dayNum, memberId, memberObj) => {
+    /** Check if a given day (1-based) will be a day off for a member (look-ahead).
+     *  streakSoFar: how many consecutive days (including today) the member will
+     *  have worked by the end of the current day being scheduled. */
+    const willBeDayOff = (dayNum, memberId, memberObj, streakSoFar) => {
       if (dayNum > daysCount) return true; // end of month = effectively a break
+      // Mandatory rest: after 5 consecutive working days the member must rest
+      if (streakSoFar >= 5) return true;
       const dateKey = getDateKey(currentYear, currentMonth, dayNum);
       if (timeOff[dateKey]?.[memberId]) return true;
       if (memberObj?.birthday && memberObj.birthday.substring(5) === dateKey.substring(5)) return true;
@@ -229,20 +233,22 @@ export function useAutoScheduler() {
               else if (!isNewStretch && currShift !== shift.id) score += 80;
             } else if (allocOption === '1') {
               // Option 1: Maximize hours at beginning and end of work stretch
-              // First day of stretch (after day off): prefer later/longer shifts
+              // streakIncludingToday: consecutive days if this member works today
+              const streakIncludingToday = (consecutiveDays[m.id] || 0) + 1;
+
               if (isNewStretch) {
-                // Later start = higher hour value = better (lower score)
-                // Normalize: assume shifts range ~6:00-22:00
+                // First day of stretch (after day off): prefer later/longer shifts
+                // Later start = higher hour → lower score (preferred)
                 score -= (shiftStartHour - 6) * 10;
               } else {
-                // Check if tomorrow is a day off (last day of stretch)
-                const tomorrowIsOff = willBeDayOff(d + 1, m.id, m) || (consecutiveDays[m.id] || 0) >= 4;
+                // Check if tomorrow will be a day off (making today the last day)
+                const tomorrowIsOff = willBeDayOff(d + 1, m.id, m, streakIncludingToday);
                 if (tomorrowIsOff) {
                   // Last day of stretch: prefer earlier shifts
-                  // Earlier start = lower hour value = better (lower score)
-                  score += (shiftStartHour - 6) * 10;
+                  // Earlier start = lower hour → lower score (preferred)
+                  score -= (22 - shiftStartHour) * 10;
                 } else {
-                  // Mid-stretch: mild preference for mid-range, slight consistency
+                  // Mid-stretch: mild consistency preference
                   if (currShift === shift.id) score -= 20;
                   else if (currShift !== shift.id) score += 20;
                 }

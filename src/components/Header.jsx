@@ -1,8 +1,9 @@
 import React from 'react';
 import {
-  Calendar, Users, Clock, ShieldCheck, Sun, Globe, Download, Upload,
+  Calendar, Users, Clock, ShieldCheck, Sun, Globe, Download, Upload, HelpCircle,
 } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
+import HelpModal from './modals/HelpModal';
 
 const TAB_CONFIG = [
   { key: 'roster', icon: Calendar, label: 'monthly_roster' },
@@ -14,8 +15,11 @@ const TAB_CONFIG = [
 
 export default function Header() {
   const { t, language, setLanguage, activeTab, setActiveTab, downloadBackup, uploadBackup } = useRoster();
+  const [helpOpen, setHelpOpen] = React.useState(false);
 
   return (
+    <>
+    <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} t={t} />
     <header className="bg-white border-b border-slate-200 sticky top-0 z-10 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between overflow-x-auto">
         <div className="flex items-center gap-2 mr-6 shrink-0">
@@ -44,6 +48,9 @@ export default function Header() {
             <Upload className="w-4 h-4" /> <span>{t('load_backup')}</span>
             <input type="file" accept=".json" onChange={uploadBackup} className="hidden" />
           </label>
+          <button onClick={() => setHelpOpen(true)} className="text-slate-400 hover:text-indigo-600 p-1.5 rounded-full hover:bg-indigo-50 transition ml-2" title={t('help')}>
+            <HelpCircle className="w-5 h-5" />
+          </button>
           <Globe className="w-4 h-4 text-slate-400 ml-2" />
           <select
             value={language}
@@ -56,5 +63,6 @@ export default function Header() {
         </div>
       </div>
     </header>
+    </>
   );
 }

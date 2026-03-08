@@ -27,6 +27,7 @@ export function useAutoScheduler() {
 
     let consecutiveDays = {};
     let mandatoryDaysOff = {};
+    let mandatoryRestReason = {}; // '5day' = from 5-consecutive rule, 'twoDayOff' = from min-2-days-off rule
     let currentStretchShift = {};
     let daysWorkedThisMonth = {};
 
@@ -112,9 +113,11 @@ export function useAutoScheduler() {
 
       if (streak >= 5) {
         mandatoryDaysOff[m.id] = minTwoDaysOff ? 2 : 1;
+        mandatoryRestReason[m.id] = '5day';
         consecutiveDays[m.id] = 0;
       } else {
         mandatoryDaysOff[m.id] = 0;
+        mandatoryRestReason[m.id] = null;
       }
     });
 
@@ -152,20 +155,23 @@ export function useAutoScheduler() {
 
         if (consecutiveDays[m.id] >= 5) {
           mandatoryDaysOff[m.id] = minTwoDaysOff ? 2 : 1;
+          mandatoryRestReason[m.id] = '5day';
           currentStretchShift[m.id] = null;
           consecutiveDays[m.id] = 0;
         }
 
         if (mandatoryDaysOff[m.id] > 0) {
           const remainingBeforeDecrement = mandatoryDaysOff[m.id];
+          const reason = mandatoryRestReason[m.id];
           mandatoryDaysOff[m.id]--;
           if (consecutiveDays[m.id] > 0) {
             currentStretchShift[m.id] = null;
           }
           consecutiveDays[m.id] = 0;
-          // Only eligible for pull-back if this is their last mandatory rest day
-          // (remainingBeforeDecrement === 1 means they already had their earlier rest days)
-          if (remainingBeforeDecrement === 1) {
+          // Only eligible for pull-back from the 5-consecutive-day rule,
+          // and only on their last mandatory rest day (already had at least 1 day off).
+          // Never pull back members resting due to the min-2-days-off rule.
+          if (reason === '5day' && remainingBeforeDecrement === 1) {
             mandatoryRestMembers.push(m);
           }
           return;
@@ -355,8 +361,10 @@ export function useAutoScheduler() {
           if (!mandatoryDaysOff[m.id]) {
             if (consecutiveDays[m.id] >= 5) {
               mandatoryDaysOff[m.id] = minTwoDaysOff ? 1 : 0;
+              mandatoryRestReason[m.id] = '5day';
             } else if (consecutiveDays[m.id] > 0 && minTwoDaysOff) {
               mandatoryDaysOff[m.id] = 1;
+              mandatoryRestReason[m.id] = 'twoDayOff';
             }
             if (consecutiveDays[m.id] > 0) {
               currentStretchShift[m.id] = null;

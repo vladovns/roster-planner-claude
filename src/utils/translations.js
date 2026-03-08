@@ -13,6 +13,12 @@ export const translations = {
     min_hours: "Min Hours", max_days_off: "Max Days Off", create_new_shift: "Create New Shift", edit_shift_targets: "Staffing Targets (For this shift)", min_two_days_off: "Min 2 Days Off",
     confirm_overwrite: "This person already has a booking on some of these dates. Overwrite?", remove_block: "Remove entire booking block?",
     holidays_taken: "Holidays", sick_days_taken: "Sick", wish_days_taken: "Wish", rest_days: "Rest",
+    allocation_option: "Shift Allocation",
+    allocation_none: "No Preference",
+    allocation_option_1: "Maximize rest between stretches",
+    allocation_option_2: "Consistent shifts",
+    allocation_option_1_hint: "Late → Mid → Early: later shifts after days off, earlier shifts before days off",
+    allocation_option_2_hint: "Same shift throughout: e.g. Early → Early → Early",
   },
   de: {
     app_title: "Dienstplaner",
@@ -28,6 +34,12 @@ export const translations = {
     min_hours: "Min. Stunden", max_days_off: "Max. freie Tage", create_new_shift: "Neue Schicht erstellen", edit_shift_targets: "Personalbedarf (Für diese Schicht)", min_two_days_off: "Min. 2 Tage Frei",
     confirm_overwrite: "Diese Person hat bereits eine Buchung an einigen Tagen. Überschreiben?", remove_block: "Gesamten Buchungsblock entfernen?",
     holidays_taken: "Urlaub", sick_days_taken: "Krank", wish_days_taken: "Wunsch", rest_days: "Ruhe",
+    allocation_option: "Schichtzuweisung",
+    allocation_none: "Keine Präferenz",
+    allocation_option_1: "Ruhezeit maximieren",
+    allocation_option_2: "Gleiche Schichten",
+    allocation_option_1_hint: "Spät → Mitte → Früh: spätere Schichten nach freien Tagen, frühere vor freien Tagen",
+    allocation_option_2_hint: "Gleiche Schicht durchgehend: z.B. Früh → Früh → Früh",
   },
 };
 

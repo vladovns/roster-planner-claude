@@ -159,10 +159,11 @@ export function RosterProvider({ children }) {
     const role = formData.get('role');
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
+    const allocationOption = formData.get('allocationOption') || '';
 
     setMembers(prev => {
       const color = MEMBER_COLORS[prev.length % MEMBER_COLORS.length];
-      return [...prev, { id: generateId(), name, role, color, birthday, maxDaysOff }];
+      return [...prev, { id: generateId(), name, role, color, birthday, maxDaysOff, allocationOption }];
     });
     e.target.reset();
   }, []);
@@ -205,11 +206,12 @@ export function RosterProvider({ children }) {
     const role = formData.get('role');
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
+    const allocationOption = formData.get('allocationOption') || '';
 
     setEditingMember(prev => {
       if (!prev) return null;
       setMembers(mPrev => mPrev.map(m => m.id === prev.id
-        ? { ...m, name, role, birthday, maxDaysOff }
+        ? { ...m, name, role, birthday, maxDaysOff, allocationOption }
         : m
       ));
       return null;

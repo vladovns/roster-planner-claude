@@ -250,8 +250,18 @@ export function useAutoScheduler() {
             if (mRole.preferenceType === 'only' && mRole.preferredShiftId === shift.id) score -= 1000;
             else if (mRole.preferenceType === 'mainly') {
               if (mRole.preferredShiftId === shift.id) score -= 500;
-              else score += 200;
+              else {
+                // Only penalize non-preferred shifts when the preferred shift
+                // actually has demand today. E.g. "mainly B" should freely do S1
+                // on weekends when B has 0 requirement.
+                const preferredHasDemand = activeShifts.some(s => s.id === mRole.preferredShiftId);
+                if (preferredHasDemand) score += 200;
+              }
             }
+
+            // Workload balance: prefer members who have worked fewer days
+            // this month to distribute shifts more evenly across the team
+            score += (daysWorkedThisMonth[m.id] || 0) * 8;
 
             const isNewStretch = (consecutiveDays[m.id] || 0) === 0;
             const currShift = currentStretchShift[m.id];

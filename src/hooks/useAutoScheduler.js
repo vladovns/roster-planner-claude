@@ -157,12 +157,17 @@ export function useAutoScheduler() {
         }
 
         if (mandatoryDaysOff[m.id] > 0) {
+          const remainingBeforeDecrement = mandatoryDaysOff[m.id];
           mandatoryDaysOff[m.id]--;
           if (consecutiveDays[m.id] > 0) {
             currentStretchShift[m.id] = null;
           }
           consecutiveDays[m.id] = 0;
-          mandatoryRestMembers.push(m);
+          // Only eligible for pull-back if this is their last mandatory rest day
+          // (remainingBeforeDecrement === 1 means they already had their earlier rest days)
+          if (remainingBeforeDecrement === 1) {
+            mandatoryRestMembers.push(m);
+          }
           return;
         }
 

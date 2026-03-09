@@ -31,6 +31,23 @@ export function useAutoScheduler() {
     let currentStretchShift = {};
     let daysWorkedThisMonth = {};
 
+    // Pre-calculate guaranteed days off per member (time off + birthdays + fixed days off)
+    // so maxDaysOff logic can plan ahead. Wish days count as days off.
+    const guaranteedDaysOff = {};
+    members.forEach(m => {
+      let count = 0;
+      const mRole = roles.find(r => r.name === m.role) || { fixedDaysOff: [] };
+      for (let day = 1; day <= daysCount; day++) {
+        const dk = getDateKey(currentYear, currentMonth, day);
+        const offType = timeOff[dk]?.[m.id];
+        if (offType) { count++; continue; }
+        if (m.birthday && m.birthday.substring(5) === dk.substring(5)) { count++; continue; }
+        const dow = new Date(currentYear, currentMonth, day).getDay().toString();
+        if ((mRole.fixedDaysOff || []).map(String).includes(dow)) { count++; }
+      }
+      guaranteedDaysOff[m.id] = count;
+    });
+
     const getShiftOnDate = (dateKey, memberId) => {
       const source = newAssignments[dateKey] || assignments[dateKey];
       if (!source) return null;
@@ -263,6 +280,22 @@ export function useAutoScheduler() {
             // this month to distribute shifts more evenly across the team
             score += (daysWorkedThisMonth[m.id] || 0) * 8;
 
+            // maxDaysOff pressure: strongly prefer members who are at risk of
+            // exceeding their max days off limit. The tighter the budget, the
+            // stronger the pull toward working today.
+            if (m.maxDaysOff) {
+              const maxOff = parseInt(m.maxDaysOff, 10);
+              if (!isNaN(maxOff)) {
+                const worked = daysWorkedThisMonth[m.id] || 0;
+                const minWorkDays = daysCount - maxOff;
+                const remainingDays = daysCount - d + 1;
+                const daysLeftToWork = minWorkDays - worked;
+                // offBudget: how many rest days the member can still "afford"
+                const offBudget = remainingDays - daysLeftToWork;
+                if (offBudget <= 3) score -= (4 - offBudget) * 150; // tight → strong pull
+              }
+            }
+
             const isNewStretch = (consecutiveDays[m.id] || 0) === 0;
             const currShift = currentStretchShift[m.id];
             const allocOption = m.allocationOption;
@@ -328,16 +361,32 @@ export function useAutoScheduler() {
       });
 
       // 2. FORCE ASSIGNMENT FOR MAX DAYS OFF
+      // Count wish days, holidays, sick days, birthdays, and fixed days off
+      // toward the days-off budget. Force work when remaining days are tight.
       available.forEach(m => {
         if (!workedToday.has(m.id) && m.maxDaysOff) {
           const maxOff = parseInt(m.maxDaysOff, 10);
           if (!isNaN(maxOff)) {
-            const minWorkDays = daysCount - maxOff;
-            const remainingDays = daysCount - d + 1;
-            const daysLeftToWork = minWorkDays - (daysWorkedThisMonth[m.id] || 0);
-
-            if (daysLeftToWork >= remainingDays) {
-              let eligibleShifts = prioritizedShifts.filter(shift => isEligibleForShift(m, shift, d));
+            const worked = daysWorkedThisMonth[m.id] || 0;
+            // Days already off this month (not worked, not today)
+            const daysElapsed = d - 1;
+            const daysOffSoFar = daysElapsed - worked;
+            // Future guaranteed days off (from day d+1 onward)
+            let futureGuaranteedOff = 0;
+            for (let fd = d + 1; fd <= daysCount; fd++) {
+              const fdk = getDateKey(currentYear, currentMonth, fd);
+              const offType = timeOff[fdk]?.[m.id];
+              if (offType) { futureGuaranteedOff++; continue; }
+              if (m.birthday && m.birthday.substring(5) === fdk.substring(5)) { futureGuaranteedOff++; continue; }
+              const mRole = roles.find(r => r.name === m.role) || { fixedDaysOff: [] };
+              const dow = new Date(currentYear, currentMonth, fd).getDay().toString();
+              if ((mRole.fixedDaysOff || []).map(String).includes(dow)) { futureGuaranteedOff++; }
+            }
+            // If taking today off would exceed the budget (considering future
+            // guaranteed days off), force a work assignment.
+            const projectedDaysOff = daysOffSoFar + 1 + futureGuaranteedOff; // +1 = today off
+            if (projectedDaysOff > maxOff) {
+              let eligibleShifts = activeShifts.filter(shift => isEligibleForShift(m, shift, d));
 
               if (eligibleShifts.length > 0) {
                 eligibleShifts.sort((a, b) => {

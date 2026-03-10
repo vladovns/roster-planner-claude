@@ -142,7 +142,10 @@ export function useAutoScheduler() {
       const dateObj = new Date(currentYear, currentMonth, d);
       const dayOfWeekNum = dateObj.getDay().toString();
       const dateKey = getDateKey(currentYear, currentMonth, d);
-      if (!newAssignments[dateKey]) newAssignments[dateKey] = {};
+      // Clear existing assignments for this day so the scheduler builds
+      // a fresh, balanced schedule (prevents stale over-assignments from
+      // a previous run blocking other shifts).
+      newAssignments[dateKey] = {};
 
       const prioritizedShifts = [...shifts].sort((a, b) => (a.priority || 10) - (b.priority || 10));
 

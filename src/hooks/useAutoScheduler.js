@@ -315,26 +315,29 @@ export function useAutoScheduler() {
               else if (!isNewStretch && currShift !== shift.id) score += 80;
             } else if (allocOption === '1') {
               // Option 1: Maximize hours at beginning and end of work stretch
-              // Uses PENALTIES (positive score) for non-preferred shifts so the
-              // member is less likely to be picked for those shifts, leaving them
-              // available for the preferred one.
+              // Uses centered scoring around the midpoint of active shifts so that
+              // the preferred shift gets a BONUS (negative) and non-preferred shifts
+              // get a PENALTY (positive). This ensures the member is more competitive
+              // for the right shift and less competitive for wrong ones.
               const streakIncludingToday = (consecutiveDays[m.id] || 0) + 1;
+              const midpoint = (latestActiveStart + earliestActiveStart) / 2;
+              const ALLOC_WEIGHT = 25;
 
               if (isNewStretch) {
                 // First day of stretch (after day off): prefer LATEST shift
-                // Penalize shifts that start earlier than the latest active shift
-                score += (latestActiveStart - shiftStartHour) * 15;
+                // Late shifts → negative (bonus), early shifts → positive (penalty)
+                score -= (shiftStartHour - midpoint) * ALLOC_WEIGHT;
               } else {
                 // Check if tomorrow will be a day off (making today the last day)
                 const tomorrowIsOff = willBeDayOff(d + 1, m.id, m, streakIncludingToday);
                 if (tomorrowIsOff) {
                   // Last day of stretch: prefer EARLIEST shift
-                  // Penalize shifts that start later than the earliest active shift
-                  score += (shiftStartHour - earliestActiveStart) * 15;
+                  // Early shifts → negative (bonus), late shifts → positive (penalty)
+                  score += (shiftStartHour - midpoint) * ALLOC_WEIGHT;
                 } else {
-                  // Mid-stretch: mild consistency preference
-                  if (currShift === shift.id) score -= 20;
-                  else if (currShift !== shift.id) score += 20;
+                  // Mid-stretch: strong consistency preference (match default strength)
+                  if (currShift === shift.id) score -= 80;
+                  else if (currShift !== shift.id) score += 80;
                 }
               }
             } else {

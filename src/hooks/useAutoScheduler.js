@@ -239,6 +239,11 @@ export function useAutoScheduler() {
         fillOrder = prioritizedShifts;
       }
 
+      // Pre-compute earliest/latest active shift start hours for option-1 scoring
+      const activeStartHours = activeShifts.map(s => getShiftStartHour(s.time));
+      const earliestActiveStart = Math.min(...activeStartHours);
+      const latestActiveStart = Math.max(...activeStartHours);
+
       // 1. FILL SHIFTS TO MEET REQUIREMENTS (regular available first)
       fillOrder.forEach(shift => {
         const target = shift.requirements?.[dayOfWeekNum] !== undefined ? shift.requirements[dayOfWeekNum] : 1;
@@ -310,20 +315,22 @@ export function useAutoScheduler() {
               else if (!isNewStretch && currShift !== shift.id) score += 80;
             } else if (allocOption === '1') {
               // Option 1: Maximize hours at beginning and end of work stretch
-              // streakIncludingToday: consecutive days if this member works today
+              // Uses PENALTIES (positive score) for non-preferred shifts so the
+              // member is less likely to be picked for those shifts, leaving them
+              // available for the preferred one.
               const streakIncludingToday = (consecutiveDays[m.id] || 0) + 1;
 
               if (isNewStretch) {
-                // First day of stretch (after day off): prefer later/longer shifts
-                // Later start = higher hour → lower score (preferred)
-                score -= (shiftStartHour - 6) * 10;
+                // First day of stretch (after day off): prefer LATEST shift
+                // Penalize shifts that start earlier than the latest active shift
+                score += (latestActiveStart - shiftStartHour) * 15;
               } else {
                 // Check if tomorrow will be a day off (making today the last day)
                 const tomorrowIsOff = willBeDayOff(d + 1, m.id, m, streakIncludingToday);
                 if (tomorrowIsOff) {
-                  // Last day of stretch: prefer earlier shifts
-                  // Earlier start = lower hour → lower score (preferred)
-                  score -= (22 - shiftStartHour) * 10;
+                  // Last day of stretch: prefer EARLIEST shift
+                  // Penalize shifts that start later than the earliest active shift
+                  score += (shiftStartHour - earliestActiveStart) * 15;
                 } else {
                   // Mid-stretch: mild consistency preference
                   if (currShift === shift.id) score -= 20;

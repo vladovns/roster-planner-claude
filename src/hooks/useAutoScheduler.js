@@ -188,10 +188,11 @@ export function useAutoScheduler() {
             currentStretchShift[m.id] = null;
           }
           consecutiveDays[m.id] = 0;
-          // Only eligible for pull-back from the 5-consecutive-day rule,
-          // and only on their last mandatory rest day (already had at least 1 day off).
-          // Never pull back members resting due to the min-2-days-off rule.
-          if (reason === '5day' && remainingBeforeDecrement === 1) {
+          // Eligible for pull-back on the last mandatory rest day (already had
+          // at least 1 day off). This covers both the 5-consecutive-day rule and
+          // the min-2-days-off rule so understaffing doesn't occur when the pool
+          // is tight.
+          if (remainingBeforeDecrement === 1) {
             mandatoryRestMembers.push(m);
           }
           return;
@@ -208,7 +209,7 @@ export function useAutoScheduler() {
       const minRequired = Math.max(totalMinStaffing, 2);
 
       // If not enough available employees, pull back mandatory-rest members
-      // to guarantee minimum coverage (breaking the 5-consecutive-day rule)
+      // to guarantee minimum coverage
       if (available.length < minRequired && mandatoryRestMembers.length > 0) {
         const deficit = minRequired - available.length;
         const pullBack = mandatoryRestMembers.slice(0, deficit);

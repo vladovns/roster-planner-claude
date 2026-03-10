@@ -226,7 +226,6 @@ export function RosterProvider({ children }) {
     if (!name) return;
     const time = formData.get('time');
     const color = formData.get('color') || getRandomHex();
-    const priority = parseInt(formData.get('priority'), 10) || 10;
 
     const requirements = {};
     DAY_NUMBERS.forEach(d => {
@@ -234,7 +233,7 @@ export function RosterProvider({ children }) {
       requirements[d] = isNaN(parsed) ? 0 : parsed;
     });
 
-    setShifts(prev => [...prev, { id: generateId(), name, time, color, requirements, priority }]);
+    setShifts(prev => [...prev, { id: generateId(), name, time, color, requirements }]);
     setNewShiftColor(getRandomHex());
     e.target.reset();
   }, []);
@@ -262,7 +261,6 @@ export function RosterProvider({ children }) {
     const name = formData.get('name');
     const time = formData.get('time');
     const color = formData.get('color');
-    const priority = parseInt(formData.get('priority'), 10) || 10;
 
     const requirements = {};
     DAY_NUMBERS.forEach(d => {
@@ -272,7 +270,7 @@ export function RosterProvider({ children }) {
 
     setEditingShift(prev => {
       if (!prev) return null;
-      setShifts(sPrev => sPrev.map(s => s.id === prev.id ? { ...s, name, time, color, requirements, priority } : s));
+      setShifts(sPrev => sPrev.map(s => s.id === prev.id ? { ...s, name, time, color, requirements } : s));
       return null;
     });
   }, []);

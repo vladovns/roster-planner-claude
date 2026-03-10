@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { getDateKey, check11HourRest, calculateShiftDuration } from '../utils/helpers';
+import { getDateKey, check11HourRest } from '../utils/helpers';
 import { useRoster } from '../context/RosterContext';
 
 /**
@@ -147,7 +147,7 @@ export function useAutoScheduler() {
       // a previous run blocking other shifts).
       newAssignments[dateKey] = {};
 
-      const prioritizedShifts = [...shifts].sort((a, b) => (a.priority || 10) - (b.priority || 10));
+      const prioritizedShifts = [...shifts].sort((a, b) => getShiftStartHour(a.time) - getShiftStartHour(b.time));
 
       // Determine which shifts need staff today
       const activeShifts = prioritizedShifts.filter(s => {

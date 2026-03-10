@@ -208,14 +208,12 @@ export function useAutoScheduler() {
       }, 0);
       const minRequired = Math.max(totalMinStaffing, 2);
 
-      // If not enough available employees, pull back mandatory-rest members
-      // to guarantee minimum coverage
+      // Determine pulled-back members (kept separate so they only fill gaps
+      // left after regular available members are assigned).
+      let pulledBack = [];
       if (available.length < minRequired && mandatoryRestMembers.length > 0) {
         const deficit = minRequired - available.length;
-        const pullBack = mandatoryRestMembers.slice(0, deficit);
-        pullBack.forEach(m => {
-          available.push(m);
-        });
+        pulledBack = mandatoryRestMembers.slice(0, deficit);
       }
 
       let workedToday = new Set();
@@ -225,7 +223,8 @@ export function useAutoScheduler() {
         const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
         return sum + target - (newAssignments[dateKey]?.[s.id]?.length || 0);
       }, 0);
-      const capacityConstrained = available.length < totalDemand && activeShifts.length > 1;
+      const allAvailable = [...available, ...pulledBack];
+      const capacityConstrained = allAvailable.length < totalDemand && activeShifts.length > 1;
 
       // When capacity is constrained, drop the earliest (day) shifts first
       // and prioritize later shifts. E.g. with B(10:00), S1(16:00), ST1(18:30)
@@ -233,14 +232,14 @@ export function useAutoScheduler() {
       let fillOrder;
       if (capacityConstrained) {
         const sorted = [...activeShifts].sort((a, b) => getShiftStartHour(a.time) - getShiftStartHour(b.time));
-        const excess = totalDemand - available.length;
+        const excess = totalDemand - allAvailable.length;
         // Drop the N earliest shifts that can't be staffed
         fillOrder = sorted.slice(excess);
       } else {
         fillOrder = prioritizedShifts;
       }
 
-      // 1. FILL SHIFTS TO MEET REQUIREMENTS
+      // 1. FILL SHIFTS TO MEET REQUIREMENTS (regular available first)
       fillOrder.forEach(shift => {
         const target = shift.requirements?.[dayOfWeekNum] !== undefined ? shift.requirements[dayOfWeekNum] : 1;
         if (target <= 0) return;
@@ -363,6 +362,30 @@ export function useAutoScheduler() {
           needed--;
         }
       });
+
+      // 1b. FILL REMAINING GAPS WITH PULLED-BACK MEMBERS
+      // Pulled-back members only fill shifts that regular members couldn't cover,
+      // so they don't compete with (and displace) regular available members.
+      if (pulledBack.length > 0) {
+        fillOrder.forEach(shift => {
+          const target = shift.requirements?.[dayOfWeekNum] !== undefined ? shift.requirements[dayOfWeekNum] : 1;
+          if (target <= 0) return;
+          if (!newAssignments[dateKey][shift.id]) newAssignments[dateKey][shift.id] = [];
+          const currentlyAssigned = newAssignments[dateKey][shift.id];
+          let needed = target - currentlyAssigned.length;
+          if (needed <= 0) return;
+
+          let pbAvailable = pulledBack.filter(m => !workedToday.has(m.id) && isEligibleForShift(m, shift, d));
+          while (needed > 0 && pbAvailable.length > 0) {
+            const chosen = pbAvailable[0];
+            newAssignments[dateKey][shift.id].push(chosen.id);
+            workedToday.add(chosen.id);
+            assignedShiftToday[chosen.id] = shift.id;
+            pbAvailable = pbAvailable.filter(m => m.id !== chosen.id);
+            needed--;
+          }
+        });
+      }
 
       // 2. FORCE ASSIGNMENT FOR MAX DAYS OFF
       // Count wish days, holidays, sick days, birthdays, and fixed days off

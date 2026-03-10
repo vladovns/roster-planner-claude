@@ -314,31 +314,54 @@ export function useAutoScheduler() {
               if (!isNewStretch && currShift === shift.id) score -= 80;
               else if (!isNewStretch && currShift !== shift.id) score += 80;
             } else if (allocOption === '1') {
-              // Option 1: Maximize hours at beginning and end of work stretch
-              // Uses centered scoring around the midpoint of active shifts so that
-              // the preferred shift gets a BONUS (negative) and non-preferred shifts
-              // get a PENALTY (positive). This ensures the member is more competitive
-              // for the right shift and less competitive for wrong ones.
+              // Option 1: Maximize hours — late shifts at start of stretch,
+              // early shifts at end. Creates a gradient across the work stretch.
+
+              // Per-member eligible shifts (role-filtered) so B doesn't skew
+              // scoring for members who can only do S1/ST1/S2.
+              const eligibleActiveShifts = activeShifts.filter(s => {
+                if (mRole.excludedShiftIds?.includes(s.id)) return false;
+                if (mRole.preferenceType === 'only' && mRole.preferredShiftId !== s.id) return false;
+                return true;
+              });
+              const eligibleStarts = eligibleActiveShifts.map(s => getShiftStartHour(s.time));
+              const memEarliest = eligibleStarts.length > 0 ? Math.min(...eligibleStarts) : earliestActiveStart;
+              const memLatest = eligibleStarts.length > 0 ? Math.max(...eligibleStarts) : latestActiveStart;
+
               const streakIncludingToday = (consecutiveDays[m.id] || 0) + 1;
-              const midpoint = (latestActiveStart + earliestActiveStart) / 2;
-              const ALLOC_WEIGHT = 25;
+
+              // Look-ahead: how many working days remain in this stretch (incl. today).
+              // Uses 5-consecutive-day rule + upcoming forced off days.
+              let daysLeftInStretch = 1;
+              if (!isNewStretch) {
+                for (let look = 1; look <= (5 - streakIncludingToday); look++) {
+                  if (willBeDayOff(d + look, m.id, m, streakIncludingToday + look)) break;
+                  daysLeftInStretch++;
+                }
+              }
 
               if (isNewStretch) {
-                // First day of stretch (after day off): prefer LATEST shift
-                // Late shifts → negative (bonus), early shifts → positive (penalty)
-                score -= (shiftStartHour - midpoint) * ALLOC_WEIGHT;
-              } else {
-                // Check if tomorrow will be a day off (making today the last day)
-                const tomorrowIsOff = willBeDayOff(d + 1, m.id, m, streakIncludingToday);
-                if (tomorrowIsOff) {
-                  // Last day of stretch: prefer EARLIEST shift
-                  // Early shifts → negative (bonus), late shifts → positive (penalty)
-                  score += (shiftStartHour - midpoint) * ALLOC_WEIGHT;
+                // First day: bonus for latest eligible shift, penalty for others
+                if (shiftStartHour >= memLatest - 0.5) {
+                  score -= 100;
                 } else {
-                  // Mid-stretch: strong consistency preference (match default strength)
-                  if (currShift === shift.id) score -= 80;
-                  else if (currShift !== shift.id) score += 80;
+                  score += (memLatest - shiftStartHour) * 40;
                 }
+              } else if (daysLeftInStretch === 1) {
+                // Last day: bonus for earliest eligible shift, penalty for others
+                if (shiftStartHour <= memEarliest + 0.5) {
+                  score -= 100;
+                } else {
+                  score += (shiftStartHour - memEarliest) * 40;
+                }
+              } else if (daysLeftInStretch === 2) {
+                // Second-to-last: moderate preference for earlier shifts
+                // (starts the transition without full commitment)
+                score += (shiftStartHour - memEarliest) * 15;
+              } else {
+                // Mid-stretch: strong consistency
+                if (currShift === shift.id) score -= 80;
+                else if (currShift !== shift.id) score += 80;
               }
             } else {
               // No preference: mild consistency bonus (original behavior)

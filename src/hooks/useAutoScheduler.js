@@ -223,15 +223,15 @@ export function useAutoScheduler() {
       }, 0);
       const capacityConstrained = available.length < totalDemand && activeShifts.length > 1;
 
-      // When capacity is constrained, reorder shifts so the latest shift is
-      // always covered: fill earliest first, then latest, skipping mid shifts.
+      // When capacity is constrained, drop the earliest (day) shifts first
+      // and prioritize later shifts. E.g. with B(10:00), S1(16:00), ST1(18:30)
+      // and only 2 available: drop B, fill S1 + ST1.
       let fillOrder;
       if (capacityConstrained) {
         const sorted = [...activeShifts].sort((a, b) => getShiftStartHour(a.time) - getShiftStartHour(b.time));
-        const latest = sorted.pop();   // latest shift by start time
-        const earliest = sorted.shift(); // earliest shift by start time
-        // Order: earliest, latest, then any remaining mid shifts
-        fillOrder = [earliest, latest, ...sorted].filter(Boolean);
+        const excess = totalDemand - available.length;
+        // Drop the N earliest shifts that can't be staffed
+        fillOrder = sorted.slice(excess);
       } else {
         fillOrder = prioritizedShifts;
       }

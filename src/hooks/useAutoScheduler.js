@@ -341,23 +341,25 @@ export function useAutoScheduler() {
               }
 
               if (isNewStretch) {
-                // First day: bonus for latest eligible shift, penalty for others
+                // First day: strong bonus for latest eligible shift, penalty for others.
+                // Weight (600) must exceed 5th-day penalty (500) so shift *choice*
+                // is respected even when a member works their 5th consecutive day.
                 if (shiftStartHour >= memLatest - 0.5) {
-                  score -= 100;
+                  score -= 600;
                 } else {
-                  score += (memLatest - shiftStartHour) * 40;
+                  score += (memLatest - shiftStartHour) * 120;
                 }
               } else if (daysLeftInStretch === 1) {
-                // Last day: bonus for earliest eligible shift, penalty for others
+                // Last day: strong bonus for earliest eligible shift, penalty for others.
                 if (shiftStartHour <= memEarliest + 0.5) {
-                  score -= 100;
+                  score -= 600;
                 } else {
-                  score += (shiftStartHour - memEarliest) * 40;
+                  score += (shiftStartHour - memEarliest) * 120;
                 }
               } else if (daysLeftInStretch === 2) {
                 // Second-to-last: moderate preference for earlier shifts
                 // (starts the transition without full commitment)
-                score += (shiftStartHour - memEarliest) * 15;
+                score += (shiftStartHour - memEarliest) * 40;
               } else {
                 // Mid-stretch: strong consistency
                 if (currShift === shift.id) score -= 80;

@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ChevronLeft, ChevronRight, Wand2, Printer, Loader2, Clock, Users,
-  Gift, Sun, Thermometer, Heart, AlertTriangle, DollarSign, CalendarCheck,
 } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
 import { useAutoScheduler } from '../hooks/useAutoScheduler';
@@ -17,7 +16,7 @@ export default function RosterTab() {
     minTwoDaysOff, setMinTwoDaysOff,
     isExporting, setIsExporting,
     prevMonth, nextMonth, clearMonth,
-    getMemberShiftOnDate, getMonthlyStats, coverageAlerts,
+    getMemberShiftOnDate, getMonthlyStats,
     setEditingCell, setActiveTab,
   } = useRoster();
 
@@ -82,9 +81,6 @@ export default function RosterTab() {
         tableEl.style.width = '100%';
         tableEl.style.height = 'auto';
       }
-
-      // Remove coverage alerts and leave/events rows from PDF
-      clone.querySelectorAll('[data-print-hide]').forEach(el => el.remove());
 
       // Force all table borders to black for readability
       clone.querySelectorAll('table, table thead, table tbody, table tr, table td, table th').forEach(el => {
@@ -274,68 +270,6 @@ export default function RosterTab() {
                   </tr>
                 ))}
 
-                {/* Leave & Events Row */}
-                <tr data-print-hide className="bg-slate-50/80 border-t-2 border-slate-300 print:hidden">
-                  <td className="px-2 py-0 border-r border-slate-200 sticky left-0 bg-slate-100 shadow-[1px_0_0_0_rgba(226,232,240,1)] z-10 text-left h-12 sm:h-16">
-                    <div className="font-semibold text-slate-700 text-[9px] sm:text-[11px] uppercase tracking-wider">{t('leave_events')}</div>
-                  </td>
-                  {daysArray.map(day => {
-                    const dateKey = getDateKey(currentYear, currentMonth, day);
-                    const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
-                    const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
-
-                    let eventsForDay = [];
-                    members.forEach(m => {
-                      if (m.birthday && m.birthday.substring(5) === dateKey.substring(5)) eventsForDay.push({ member: m, type: 'birthday' });
-                      if (timeOff[dateKey]?.[m.id]) eventsForDay.push({ member: m, type: timeOff[dateKey][m.id] });
-                    });
-
-                    return (
-                      <td key={`events-${dateKey}`} className={`p-0.5 border-r border-slate-200 align-top h-12 sm:h-16 overflow-hidden ${isFriSat ? 'bg-blue-50/40' : ''}`}>
-                        <div className="flex flex-col gap-0.5 h-full overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          {eventsForDay.map((ev, i) => (
-                            <div key={i} className={`text-[8px] sm:text-[9px] px-0.5 py-0.5 rounded border flex items-center justify-center lg:justify-start gap-0.5 ${ev.member.color} bg-white shadow-sm leading-none`} title={`${ev.member.name} - ${ev.type}`}>
-                              {ev.type === 'birthday' && <Gift className="w-2.5 h-2.5 text-indigo-500 shrink-0 hidden lg:block" />}
-                              {ev.type === 'holiday' && <Sun className="w-2.5 h-2.5 text-orange-500 shrink-0 hidden lg:block" />}
-                              {ev.type === 'sick' && <Thermometer className="w-2.5 h-2.5 text-red-500 shrink-0 hidden lg:block" />}
-                              {ev.type === 'wish' && <Heart className="w-2.5 h-2.5 text-pink-500 shrink-0 hidden lg:block" />}
-                              {ev.type === 'unpaid' && <DollarSign className="w-2.5 h-2.5 text-amber-600 shrink-0 hidden lg:block" />}
-                              {ev.type?.startsWith('event_') && <CalendarCheck className="w-2.5 h-2.5 text-teal-500 shrink-0 hidden lg:block" />}
-                              <span className="truncate font-medium">{ev.member.name.split(' ')[0].substring(0, 3)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Coverage Alerts Row */}
-                <tr data-print-hide className="bg-red-50/80 border-t-2 border-red-200 print:hidden">
-                  <td className="px-2 py-0 border-r border-red-200 sticky left-0 bg-red-50 shadow-[1px_0_0_0_rgba(254,202,202,1)] z-10 text-left h-12 sm:h-16">
-                    <div className="font-bold text-red-700 text-[9px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" /> <span className="hidden sm:inline">{t('coverage_alerts')}</span>
-                    </div>
-                  </td>
-                  {daysArray.map(day => {
-                    const dateKey = getDateKey(currentYear, currentMonth, day);
-                    const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
-                    const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
-                    const alerts = coverageAlerts[dateKey] || [];
-
-                    return (
-                      <td key={`alert-${dateKey}`} className={`p-0.5 border-r border-red-200 align-top h-12 sm:h-16 overflow-hidden ${isFriSat ? 'bg-red-100/40' : ''}`}>
-                        <div className="flex flex-col gap-0.5 h-full overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          {alerts.map((al, i) => (
-                            <div key={i} className="text-[8px] sm:text-[9px] px-0.5 py-0.5 rounded border border-red-300 flex items-center justify-center gap-1 bg-white text-red-700 shadow-sm font-bold leading-none" title={`${al.name} ${t('understaffed')} (${al.assigned}/${al.target} ${t('target')})`}>
-                              <span className="truncate">{al.name}: {al.assigned}/{al.target}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
               </tbody>
             </table>
           </div>

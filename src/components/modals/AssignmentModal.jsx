@@ -71,7 +71,7 @@ export default function AssignmentModal() {
                     onClick={() => handleCellUpdate(editingCell.dateKey, editingCell.memberId, null, `event_${ev.id}`)}
                     className={`p-3 rounded-lg border text-sm font-bold transition-colors ${editingCell.currentOffType === `event_${ev.id}` ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-white border-slate-200 text-teal-600 hover:bg-teal-50'}`}
                   >
-                    {ev.name} <br /><span className="text-[10px] font-normal opacity-70 text-slate-500">{ev.hours}h</span>
+                    <span className="text-teal-800">{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span> {ev.name} <br /><span className="text-[10px] font-normal opacity-70 text-slate-500">{ev.hours}h{ev.explanation ? ` — ${ev.explanation}` : ''}</span>
                   </button>
                 ))}
               </div>

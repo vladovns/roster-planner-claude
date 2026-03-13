@@ -66,7 +66,21 @@ export default function TimeOffTab() {
               <form onSubmit={addEvent} className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                   <input type="text" name="eventName" required placeholder={t('event_name')} className="flex-[2] min-w-[180px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
-                  <input type="number" name="eventHours" required min="0.5" max="24" step="0.5" placeholder={t('event_hours')} className="flex-1 min-w-[120px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
+                  <input type="text" name="eventAbbreviation" required maxLength="5" placeholder={t('event_abbreviation_placeholder')} className="flex-none w-[100px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white uppercase" />
+                  <input type="number" name="eventHours" required min="0.5" max="24" step="0.5" placeholder={t('event_hours')} className="flex-none w-[130px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
+                </div>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+                  <input type="text" name="eventExplanation" placeholder={t('event_explanation_placeholder')} className="flex-[2] min-w-[180px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
+                </div>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">{t('event_start_date')}</label>
+                    <input type="date" name="eventStartDate" className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
+                  </div>
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">{t('event_end_date')}</label>
+                    <input type="date" name="eventEndDate" className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
+                  </div>
                 </div>
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center">
                   <label className="flex items-center gap-2 text-sm text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg cursor-pointer hover:bg-slate-50 transition">
@@ -85,15 +99,21 @@ export default function TimeOffTab() {
                 {events.map(ev => (
                   <li key={ev.id} className="p-3 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
-                        <CalendarCheck className="w-3.5 h-3.5" />
+                      <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                        {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{ev.name}</p>
-                        <p className="text-xs text-slate-500 flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-900">
+                          {ev.name}
+                          {ev.explanation && <span className="text-slate-400 font-normal ml-1">— {ev.explanation}</span>}
+                        </p>
+                        <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {ev.hours}h</span>
                           {ev.countsAsWorkDay && (
                             <span className="text-teal-600 font-medium">• {t('counts_as_work_day')}</span>
+                          )}
+                          {ev.startDate && (
+                            <span className="text-slate-400">• {ev.startDate}{ev.endDate ? ` – ${ev.endDate}` : ''}</span>
                           )}
                         </p>
                       </div>

@@ -342,10 +342,14 @@ export function RosterProvider({ children }) {
     const formData = new FormData(e.target);
     const name = formData.get('eventName');
     if (!name) return;
+    const abbreviation = (formData.get('eventAbbreviation') || name.substring(0, 3)).toUpperCase();
+    const explanation = formData.get('eventExplanation') || '';
     const hours = parseFloat(formData.get('eventHours')) || 0;
+    const startDate = formData.get('eventStartDate') || '';
+    const endDate = formData.get('eventEndDate') || '';
     const countsAsWorkDay = formData.get('countsAsWorkDay') === 'on';
 
-    setEvents(prev => [...prev, { id: generateId(), name, hours, countsAsWorkDay }]);
+    setEvents(prev => [...prev, { id: generateId(), name, abbreviation, explanation, hours, startDate, endDate, countsAsWorkDay }]);
     e.target.reset();
   }, []);
 
@@ -426,6 +430,7 @@ export function RosterProvider({ children }) {
     let wishDays = 0;
     let unpaidDays = 0;
     let eventDays = 0;
+    const eventBreakdown = {}; // { eventId: count }
 
     for (let d = 1; d <= daysCount; d++) {
       const dateKey = getDateKey(currentYear, currentMonth, d);
@@ -437,7 +442,9 @@ export function RosterProvider({ children }) {
       else if (offType === 'unpaid') unpaidDays++;
       else if (offType && offType.startsWith('event_')) {
         eventDays++;
-        const eventDef = events.find(ev => `event_${ev.id}` === offType);
+        const eventId = offType.replace('event_', '');
+        eventBreakdown[eventId] = (eventBreakdown[eventId] || 0) + 1;
+        const eventDef = events.find(ev => ev.id === eventId);
         if (eventDef?.countsAsWorkDay) {
           daysWorked++;
           hoursWorked += eventDef.hours || 0;
@@ -462,6 +469,7 @@ export function RosterProvider({ children }) {
       wishDays,
       unpaidDays,
       eventDays,
+      eventBreakdown,
       restDays,
     };
   }, [daysCount, currentYear, currentMonth, shifts, assignments, timeOff, events]);

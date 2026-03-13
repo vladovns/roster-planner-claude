@@ -235,7 +235,7 @@ export default function RosterTab() {
                       else if (memberOffType === 'unpaid') { display = t('unpaid'); cellClass = 'text-amber-700 font-bold'; baseBg = 'bg-amber-50'; }
                       else if (memberOffType && memberOffType.startsWith('event_')) {
                         const eventDef = events.find(ev => `event_${ev.id}` === memberOffType);
-                        display = eventDef ? eventDef.name.substring(0, 3).toUpperCase() : 'EVT';
+                        display = eventDef ? (eventDef.abbreviation || eventDef.name.substring(0, 3).toUpperCase()) : 'EVT';
                         cellClass = 'text-teal-700 font-bold';
                         baseBg = 'bg-teal-50';
                       }
@@ -379,25 +379,51 @@ export default function RosterTab() {
                       </div>
                     </div>
                     {(stats.unpaidDays > 0 || stats.eventDays > 0) && (
-                      <div className="grid grid-cols-2 gap-1 text-xs text-slate-600 bg-slate-50 p-1.5 rounded-md border border-slate-100">
+                      <div className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded-md border border-slate-100 space-y-1">
                         {stats.unpaidDays > 0 && (
-                          <div className="flex flex-col text-center">
+                          <div className="flex justify-between items-center">
                             <span className="text-[10px] text-amber-500 uppercase">{t('unpaid_days_taken')}</span>
                             <span className="font-semibold text-amber-600">{stats.unpaidDays}</span>
                           </div>
                         )}
-                        {stats.eventDays > 0 && (
-                          <div className="flex flex-col text-center">
-                            <span className="text-[10px] text-teal-400 uppercase">{t('events')}</span>
-                            <span className="font-semibold text-teal-600">{stats.eventDays}</span>
-                          </div>
-                        )}
+                        {Object.entries(stats.eventBreakdown).map(([eventId, count]) => {
+                          const ev = events.find(e => e.id === eventId);
+                          if (!ev) return null;
+                          return (
+                            <div key={eventId} className="flex justify-between items-center">
+                              <span className="text-[10px] text-teal-500 uppercase truncate mr-2" title={ev.explanation || ev.name}>
+                                {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
+                              </span>
+                              <span className="font-semibold text-teal-600">{count}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
+            {events.length > 0 && (
+              <div className="mt-3 print:mt-2">
+                <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('event_legend')}</h4>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {events.map(ev => (
+                    <span key={ev.id} className="text-xs text-slate-600">
+                      <span className="font-bold text-teal-700">{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span>
+                      {' — '}
+                      {ev.explanation || ev.name}
+                      {ev.startDate && ev.endDate && (
+                        <span className="text-slate-400 ml-1">({ev.startDate} – {ev.endDate})</span>
+                      )}
+                      {ev.startDate && !ev.endDate && (
+                        <span className="text-slate-400 ml-1">(from {ev.startDate})</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

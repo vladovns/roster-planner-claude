@@ -236,8 +236,14 @@ export default function RosterTab() {
                       else if (memberOffType && memberOffType.startsWith('event_')) {
                         const eventDef = events.find(ev => `event_${ev.id}` === memberOffType);
                         display = eventDef ? (eventDef.abbreviation || eventDef.name.substring(0, 3).toUpperCase()) : 'EVT';
-                        cellClass = 'text-teal-700 font-bold';
-                        baseBg = 'bg-teal-50';
+                        if (eventDef?.color) {
+                          cellClass = 'font-bold';
+                          cellStyle = { color: eventDef.color };
+                          baseBg = '';
+                        } else {
+                          cellClass = 'text-teal-700 font-bold';
+                          baseBg = 'bg-teal-50';
+                        }
                       }
                       else if (assignedShift) {
                         display = assignedShift.name;
@@ -389,12 +395,13 @@ export default function RosterTab() {
                         {Object.entries(stats.eventBreakdown).map(([eventId, count]) => {
                           const ev = events.find(e => e.id === eventId);
                           if (!ev) return null;
+                          const evColor = ev.color || '#0f766e';
                           return (
                             <div key={eventId} className="flex justify-between items-center">
-                              <span className="text-[10px] text-teal-500 uppercase truncate mr-2" title={ev.explanation || ev.name}>
+                              <span className="text-[10px] uppercase truncate mr-2" style={{ color: evColor }} title={ev.explanation || ev.name}>
                                 {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
                               </span>
-                              <span className="font-semibold text-teal-600">{count}</span>
+                              <span className="font-semibold" style={{ color: evColor }}>{count}</span>
                             </div>
                           );
                         })}
@@ -410,15 +417,9 @@ export default function RosterTab() {
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {events.map(ev => (
                     <span key={ev.id} className="text-xs text-slate-600">
-                      <span className="font-bold text-teal-700">{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span>
+                      <span className="font-bold" style={{ color: ev.color || '#0f766e' }}>{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span>
                       {' — '}
                       {ev.explanation || ev.name}
-                      {ev.startDate && ev.endDate && (
-                        <span className="text-slate-400 ml-1">({ev.startDate} – {ev.endDate})</span>
-                      )}
-                      {ev.startDate && !ev.endDate && (
-                        <span className="text-slate-400 ml-1">(from {ev.startDate})</span>
-                      )}
                     </span>
                   ))}
                 </div>

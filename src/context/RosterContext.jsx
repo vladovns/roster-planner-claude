@@ -345,12 +345,15 @@ export function RosterProvider({ children }) {
     const abbreviation = (formData.get('eventAbbreviation') || name.substring(0, 3)).toUpperCase();
     const explanation = formData.get('eventExplanation') || '';
     const hours = parseFloat(formData.get('eventHours')) || 0;
-    const startDate = formData.get('eventStartDate') || '';
-    const endDate = formData.get('eventEndDate') || '';
+    const color = formData.get('eventColor') || '#0f766e';
     const countsAsWorkDay = formData.get('countsAsWorkDay') === 'on';
 
-    setEvents(prev => [...prev, { id: generateId(), name, abbreviation, explanation, hours, startDate, endDate, countsAsWorkDay }]);
+    setEvents(prev => [...prev, { id: generateId(), name, abbreviation, explanation, hours, color, countsAsWorkDay }]);
     e.target.reset();
+  }, []);
+
+  const updateEvent = useCallback((id, updates) => {
+    setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...updates } : ev));
   }, []);
 
   const removeEvent = useCallback((id) => {
@@ -504,7 +507,7 @@ export function RosterProvider({ children }) {
     currentDate, currentYear, currentMonth, daysCount, daysArray,
     assignments, setAssignments,
     timeOff, setTimeOff, timeOffError, setTimeOffError, addTimeOff, removeTimeOffEntry,
-    events, setEvents, addEvent, removeEvent,
+    events, setEvents, addEvent, updateEvent, removeEvent,
     editingCell, setEditingCell,
     isExporting, setIsExporting,
     newShiftColor, setNewShiftColor,

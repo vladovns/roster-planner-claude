@@ -87,6 +87,19 @@ export function check11HourRest(timeYesterday, timeToday) {
   return restTime >= 11;
 }
 
+export const EVENT_COLORS = [
+  { bg: '#f0fdfa', text: '#0f766e', name: 'Teal' },
+  { bg: '#eff6ff', text: '#1d4ed8', name: 'Blue' },
+  { bg: '#faf5ff', text: '#7e22ce', name: 'Purple' },
+  { bg: '#fff7ed', text: '#c2410c', name: 'Orange' },
+  { bg: '#fdf2f8', text: '#be185d', name: 'Pink' },
+  { bg: '#f0fdf4', text: '#15803d', name: 'Green' },
+  { bg: '#fefce8', text: '#a16207', name: 'Yellow' },
+  { bg: '#fef2f2', text: '#b91c1c', name: 'Red' },
+  { bg: '#f1f5f9', text: '#475569', name: 'Slate' },
+  { bg: '#eef2ff', text: '#4338ca', name: 'Indigo' },
+];
+
 export const MEMBER_COLORS = [
   'bg-blue-100 text-blue-800', 'bg-green-100 text-green-800',
   'bg-purple-100 text-purple-800', 'bg-orange-100 text-orange-800',

@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
-import { Sun, Plus, Trash2, Thermometer, Heart, CalendarCheck, DollarSign, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sun, Plus, Trash2, Thermometer, Heart, CalendarCheck, DollarSign, Clock, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
-import { getDayOfWeekShort, formatDateDDMMYYYY } from '../utils/helpers';
+import { getDayOfWeekShort, formatDateDDMMYYYY, EVENT_COLORS } from '../utils/helpers';
 
 function getTypeIcon(type, events) {
   if (type === 'holiday') return <Sun className="w-3 h-3 text-orange-500" />;
   if (type === 'sick') return <Thermometer className="w-3 h-3 text-red-500" />;
   if (type === 'wish') return <Heart className="w-3 h-3 text-pink-500" />;
   if (type === 'unpaid') return <DollarSign className="w-3 h-3 text-amber-600" />;
-  if (type?.startsWith('event_')) return <CalendarCheck className="w-3 h-3 text-teal-500" />;
+  if (type?.startsWith('event_')) {
+    const eventId = type.replace('event_', '');
+    const ev = events.find(e => e.id === eventId);
+    const color = ev?.color || '#0f766e';
+    return <CalendarCheck className="w-3 h-3" style={{ color }} />;
+  }
   return null;
 }
 
@@ -25,14 +30,97 @@ function getTypeLabel(type, t, events) {
   return type;
 }
 
+function EventEditRow({ ev, t, updateEvent, removeEvent }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ name: ev.name, abbreviation: ev.abbreviation || '', explanation: ev.explanation || '', hours: ev.hours, color: ev.color || '#0f766e', countsAsWorkDay: ev.countsAsWorkDay });
+
+  const save = () => {
+    updateEvent(ev.id, {
+      name: form.name,
+      abbreviation: form.abbreviation.toUpperCase(),
+      explanation: form.explanation,
+      hours: form.hours,
+      color: form.color,
+      countsAsWorkDay: form.countsAsWorkDay,
+    });
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setForm({ name: ev.name, abbreviation: ev.abbreviation || '', explanation: ev.explanation || '', hours: ev.hours, color: ev.color || '#0f766e', countsAsWorkDay: ev.countsAsWorkDay });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <li className="p-3 sm:px-6 bg-slate-50 border-l-4" style={{ borderLeftColor: form.color }}>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+            <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="flex-[2] min-w-[140px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-1.5 border bg-white" />
+            <input type="text" value={form.abbreviation} maxLength="5" onChange={e => setForm(f => ({ ...f, abbreviation: e.target.value }))} className="flex-none w-[80px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-1.5 border bg-white uppercase text-center" />
+            <input type="number" value={form.hours} min="0.5" max="24" step="0.5" onChange={e => setForm(f => ({ ...f, hours: parseFloat(e.target.value) || 0 }))} className="flex-none w-[80px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-1.5 border bg-white" />
+          </div>
+          <input type="text" value={form.explanation} onChange={e => setForm(f => ({ ...f, explanation: e.target.value }))} placeholder={t('event_explanation_placeholder')} className="rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-1.5 border bg-white" />
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex gap-1">
+              {EVENT_COLORS.map(c => (
+                <button key={c.text} type="button" onClick={() => setForm(f => ({ ...f, color: c.text }))}
+                  className={`w-6 h-6 rounded-full border-2 transition ${form.color === c.text ? 'border-slate-800 scale-110' : 'border-transparent hover:border-slate-300'}`}
+                  style={{ backgroundColor: c.text }}
+                  title={c.name}
+                />
+              ))}
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+              <input type="checkbox" checked={form.countsAsWorkDay} onChange={e => setForm(f => ({ ...f, countsAsWorkDay: e.target.checked }))} className="rounded text-teal-600 focus:ring-teal-500" />
+              {t('counts_as_work_day')}
+            </label>
+            <div className="flex gap-1 ml-auto">
+              <button onClick={save} className="text-white bg-teal-600 hover:bg-teal-700 px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition"><Check className="w-3 h-3" /> {t('save') || 'Save'}</button>
+              <button onClick={cancel} className="text-slate-600 bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition"><X className="w-3 h-3" /> {t('cancel') || 'Cancel'}</button>
+            </div>
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className="p-3 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors border-l-4" style={{ borderLeftColor: ev.color || '#0f766e' }}>
+      <div className="flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold" style={{ backgroundColor: (ev.color || '#0f766e') + '20', color: ev.color || '#0f766e' }}>
+          {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-900">
+            {ev.name}
+            {ev.explanation && <span className="text-slate-400 font-normal ml-1">— {ev.explanation}</span>}
+          </p>
+          <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {ev.hours}h</span>
+            {ev.countsAsWorkDay && (
+              <span className="font-medium" style={{ color: ev.color || '#0f766e' }}>• {t('counts_as_work_day')}</span>
+            )}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1">
+        <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-indigo-500 p-2 rounded-full hover:bg-indigo-50 transition"><Pencil className="w-4 h-4" /></button>
+        <button onClick={() => removeEvent(ev.id)} className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition"><Trash2 className="w-4 h-4" /></button>
+      </div>
+    </li>
+  );
+}
+
 export default function TimeOffTab() {
   const {
     t, language, members, timeOff, timeOffError,
     addTimeOff, removeTimeOffEntry,
-    events, addEvent, removeEvent,
+    events, addEvent, updateEvent, removeEvent,
   } = useRoster();
 
   const [eventsExpanded, setEventsExpanded] = useState(events.length === 0);
+  const [selectedColor, setSelectedColor] = useState(EVENT_COLORS[0].text);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -50,7 +138,7 @@ export default function TimeOffTab() {
             <div className="text-left">
               <h2 className="text-base font-semibold text-slate-900">{t('events')}</h2>
               {!eventsExpanded && events.length > 0 && (
-                <p className="text-xs text-slate-400">{events.length} {events.length === 1 ? t('event') : t('events').toLowerCase()}: {events.map(ev => ev.name).join(', ')}</p>
+                <p className="text-xs text-slate-400">{events.length} {events.length === 1 ? t('event') : t('events').toLowerCase()}: {events.map(ev => ev.abbreviation || ev.name).join(', ')}</p>
               )}
               {!eventsExpanded && events.length === 0 && (
                 <p className="text-xs text-slate-400">{t('no_events')}</p>
@@ -63,7 +151,7 @@ export default function TimeOffTab() {
         {eventsExpanded && (
           <>
             <div className="p-4 sm:p-6 bg-slate-50">
-              <form onSubmit={addEvent} className="flex flex-col gap-3">
+              <form onSubmit={(e) => { addEvent(e); setSelectedColor(EVENT_COLORS[0].text); }} className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                   <input type="text" name="eventName" required placeholder={t('event_name')} className="flex-[2] min-w-[180px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
                   <input type="text" name="eventAbbreviation" required maxLength="5" placeholder={t('event_abbreviation_placeholder')} className="flex-none w-[100px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white uppercase" />
@@ -72,17 +160,20 @@ export default function TimeOffTab() {
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                   <input type="text" name="eventExplanation" placeholder={t('event_explanation_placeholder')} className="flex-[2] min-w-[180px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
                 </div>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-                  <div className="flex-1 min-w-[140px]">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">{t('event_start_date')}</label>
-                    <input type="date" name="eventStartDate" className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
-                  </div>
-                  <div className="flex-1 min-w-[140px]">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">{t('event_end_date')}</label>
-                    <input type="date" name="eventEndDate" className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white" />
-                  </div>
-                </div>
+                <input type="hidden" name="eventColor" value={selectedColor} />
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">{t('color') || 'Color'}:</span>
+                    <div className="flex gap-1">
+                      {EVENT_COLORS.map(c => (
+                        <button key={c.text} type="button" onClick={() => setSelectedColor(c.text)}
+                          className={`w-6 h-6 rounded-full border-2 transition ${selectedColor === c.text ? 'border-slate-800 scale-110' : 'border-transparent hover:border-slate-300'}`}
+                          style={{ backgroundColor: c.text }}
+                          title={c.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
                   <label className="flex items-center gap-2 text-sm text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                     <input type="checkbox" name="countsAsWorkDay" className="rounded text-teal-600 focus:ring-teal-500" />
                     {t('counts_as_work_day')}
@@ -97,29 +188,7 @@ export default function TimeOffTab() {
             {events.length > 0 && (
               <ul className="divide-y divide-slate-200">
                 {events.map(ev => (
-                  <li key={ev.id} className="p-3 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 text-[10px] font-bold">
-                        {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">
-                          {ev.name}
-                          {ev.explanation && <span className="text-slate-400 font-normal ml-1">— {ev.explanation}</span>}
-                        </p>
-                        <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {ev.hours}h</span>
-                          {ev.countsAsWorkDay && (
-                            <span className="text-teal-600 font-medium">• {t('counts_as_work_day')}</span>
-                          )}
-                          {ev.startDate && (
-                            <span className="text-slate-400">• {ev.startDate}{ev.endDate ? ` – ${ev.endDate}` : ''}</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <button onClick={() => removeEvent(ev.id)} className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition"><Trash2 className="w-4 h-4" /></button>
-                  </li>
+                  <EventEditRow key={ev.id} ev={ev} t={t} updateEvent={updateEvent} removeEvent={removeEvent} />
                 ))}
               </ul>
             )}
@@ -156,7 +225,7 @@ export default function TimeOffTab() {
                 <option value="unpaid">{t('unpaid_leave')}</option>
                 {events.length > 0 && <option disabled>──────────</option>}
                 {events.map(ev => (
-                  <option key={ev.id} value={`event_${ev.id}`}>{ev.name} ({ev.hours}h)</option>
+                  <option key={ev.id} value={`event_${ev.id}`}>{ev.abbreviation || ev.name} — {ev.name} ({ev.hours}h)</option>
                 ))}
               </select>
             </div>

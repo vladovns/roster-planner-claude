@@ -26,9 +26,6 @@ export default function ShiftsTab() {
             <input type="text" name="name" placeholder={t('shift_name')} required className="flex-[2] min-w-[180px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" />
             <input type="text" name="time" placeholder={t('time_example')} required className="flex-1 min-w-[150px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" />
             <input type="color" name="color" value={newShiftColor} onChange={(e) => setNewShiftColor(e.target.value)} className="h-[38px] w-12 shrink-0 p-1 rounded-lg border border-slate-300 shadow-sm bg-white cursor-pointer" title={t('shift_color')} />
-            <div className="flex-none w-20">
-              <input type="number" name="priority" defaultValue="10" min="1" max="99" className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border text-center" title={t('shift_priority_hint')} placeholder={t('priority')} />
-            </div>
           </div>
 
           <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
@@ -42,8 +39,6 @@ export default function ShiftsTab() {
               ))}
             </div>
           </div>
-
-          <p className="text-xs text-slate-400 italic">{t('shift_priority_hint')}</p>
 
           <div className="flex justify-end mt-2">
             <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 font-medium text-sm">
@@ -63,7 +58,6 @@ export default function ShiftsTab() {
               <div>
                 <p className="text-sm font-bold" style={{ color: shift.color }}>
                   {shift.name}
-                  <span className="text-xs text-slate-400 font-normal ml-2">({t('priority')}: {shift.priority || 10})</span>
                 </p>
                 <p className="text-xs text-slate-500 mb-1">{shift.time} ({calculateShiftDuration(shift.time)}h net)</p>
                 <div className="flex gap-1 flex-wrap">

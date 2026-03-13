@@ -44,6 +44,9 @@ export function RosterProvider({ children }) {
   const [editingShift, setEditingShift] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
 
+  // --- CUSTOM EVENTS ---
+  const [events, setEvents] = useState([]);
+
   // --- LOCAL STORAGE PERSISTENCE ---
   useEffect(() => {
     try {
@@ -56,6 +59,7 @@ export function RosterProvider({ children }) {
         if (data.assignments) setAssignments(data.assignments);
         if (data.timeOff) setTimeOff(data.timeOff);
         if (data.minTwoDaysOff !== undefined) setMinTwoDaysOff(data.minTwoDaysOff);
+        if (data.events) setEvents(data.events);
       }
     } catch (e) {
       console.error("Local Load Error", e);
@@ -64,14 +68,14 @@ export function RosterProvider({ children }) {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      localStorage.setItem('teamRosterData', JSON.stringify({ roles, members, shifts, assignments, timeOff, minTwoDaysOff }));
+      localStorage.setItem('teamRosterData', JSON.stringify({ roles, members, shifts, assignments, timeOff, minTwoDaysOff, events }));
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff]);
+  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff, events]);
 
   // --- MANUAL BACKUP ---
   const downloadBackup = useCallback(() => {
-    const data = { roles, members, shifts, assignments, timeOff, minTwoDaysOff };
+    const data = { roles, members, shifts, assignments, timeOff, minTwoDaysOff, events };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -81,7 +85,7 @@ export function RosterProvider({ children }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff]);
+  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff, events]);
 
   const uploadBackup = useCallback((e) => {
     const file = e.target.files[0];
@@ -96,6 +100,7 @@ export function RosterProvider({ children }) {
         if (data.assignments) setAssignments(data.assignments);
         if (data.timeOff) setTimeOff(data.timeOff);
         if (data.minTwoDaysOff !== undefined) setMinTwoDaysOff(data.minTwoDaysOff);
+        if (data.events) setEvents(data.events);
       } catch (err) {
         console.error("Invalid backup file");
       }
@@ -226,7 +231,6 @@ export function RosterProvider({ children }) {
     if (!name) return;
     const time = formData.get('time');
     const color = formData.get('color') || getRandomHex();
-    const priority = parseInt(formData.get('priority'), 10) || 10;
 
     const requirements = {};
     DAY_NUMBERS.forEach(d => {
@@ -234,7 +238,7 @@ export function RosterProvider({ children }) {
       requirements[d] = isNaN(parsed) ? 0 : parsed;
     });
 
-    setShifts(prev => [...prev, { id: generateId(), name, time, color, requirements, priority }]);
+    setShifts(prev => [...prev, { id: generateId(), name, time, color, requirements }]);
     setNewShiftColor(getRandomHex());
     e.target.reset();
   }, []);
@@ -262,7 +266,6 @@ export function RosterProvider({ children }) {
     const name = formData.get('name');
     const time = formData.get('time');
     const color = formData.get('color');
-    const priority = parseInt(formData.get('priority'), 10) || 10;
 
     const requirements = {};
     DAY_NUMBERS.forEach(d => {
@@ -272,7 +275,7 @@ export function RosterProvider({ children }) {
 
     setEditingShift(prev => {
       if (!prev) return null;
-      setShifts(sPrev => sPrev.map(s => s.id === prev.id ? { ...s, name, time, color, requirements, priority } : s));
+      setShifts(sPrev => sPrev.map(s => s.id === prev.id ? { ...s, name, time, color, requirements } : s));
       return null;
     });
   }, []);
@@ -329,6 +332,43 @@ export function RosterProvider({ children }) {
         delete newTimeOff[dateKey][memberId];
         if (Object.keys(newTimeOff[dateKey]).length === 0) delete newTimeOff[dateKey];
       }
+      return newTimeOff;
+    });
+  }, []);
+
+  // --- EVENT HANDLERS ---
+  const addEvent = useCallback((e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const name = formData.get('eventName');
+    if (!name) return;
+    const abbreviation = (formData.get('eventAbbreviation') || name.substring(0, 3)).toUpperCase();
+    const explanation = formData.get('eventExplanation') || '';
+    const hours = parseFloat(formData.get('eventHours')) || 0;
+    const color = formData.get('eventColor') || '#0f766e';
+    const countsAsWorkDay = formData.get('countsAsWorkDay') === 'on';
+
+    setEvents(prev => [...prev, { id: generateId(), name, abbreviation, explanation, hours, color, countsAsWorkDay }]);
+    e.target.reset();
+  }, []);
+
+  const updateEvent = useCallback((id, updates) => {
+    setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, ...updates } : ev));
+  }, []);
+
+  const removeEvent = useCallback((id) => {
+    setEvents(prev => prev.filter(ev => ev.id !== id));
+    // Clean up any time off entries referencing this event
+    setTimeOff(prev => {
+      const newTimeOff = structuredClone(prev);
+      Object.keys(newTimeOff).forEach(dateKey => {
+        Object.keys(newTimeOff[dateKey]).forEach(memberId => {
+          if (newTimeOff[dateKey][memberId] === `event_${id}`) {
+            delete newTimeOff[dateKey][memberId];
+          }
+        });
+        if (Object.keys(newTimeOff[dateKey]).length === 0) delete newTimeOff[dateKey];
+      });
       return newTimeOff;
     });
   }, []);
@@ -391,6 +431,9 @@ export function RosterProvider({ children }) {
     let holidays = 0;
     let sickDays = 0;
     let wishDays = 0;
+    let unpaidDays = 0;
+    let eventDays = 0;
+    const eventBreakdown = {}; // { eventId: count }
 
     for (let d = 1; d <= daysCount; d++) {
       const dateKey = getDateKey(currentYear, currentMonth, d);
@@ -399,6 +442,17 @@ export function RosterProvider({ children }) {
       if (offType === 'holiday') holidays++;
       else if (offType === 'sick') sickDays++;
       else if (offType === 'wish') wishDays++;
+      else if (offType === 'unpaid') unpaidDays++;
+      else if (offType && offType.startsWith('event_')) {
+        eventDays++;
+        const eventId = offType.replace('event_', '');
+        eventBreakdown[eventId] = (eventBreakdown[eventId] || 0) + 1;
+        const eventDef = events.find(ev => ev.id === eventId);
+        if (eventDef?.countsAsWorkDay) {
+          daysWorked++;
+          hoursWorked += eventDef.hours || 0;
+        }
+      }
 
       for (const shift of shifts) {
         if (assignments[dateKey]?.[shift.id]?.includes(memberId)) {
@@ -409,16 +463,19 @@ export function RosterProvider({ children }) {
       }
     }
 
-    const restDays = daysCount - daysWorked - holidays - sickDays - wishDays;
+    const restDays = daysCount - daysWorked - holidays - sickDays - wishDays - unpaidDays - eventDays;
     return {
       shiftsWorked: daysWorked,
       hoursWorked: Math.round(hoursWorked * 10) / 10,
       holidays,
       sickDays,
       wishDays,
+      unpaidDays,
+      eventDays,
+      eventBreakdown,
       restDays,
     };
-  }, [daysCount, currentYear, currentMonth, shifts, assignments, timeOff]);
+  }, [daysCount, currentYear, currentMonth, shifts, assignments, timeOff, events]);
 
   const coverageAlerts = useMemo(() => {
     const alerts = {};
@@ -450,6 +507,7 @@ export function RosterProvider({ children }) {
     currentDate, currentYear, currentMonth, daysCount, daysArray,
     assignments, setAssignments,
     timeOff, setTimeOff, timeOffError, setTimeOffError, addTimeOff, removeTimeOffEntry,
+    events, setEvents, addEvent, updateEvent, removeEvent,
     editingCell, setEditingCell,
     isExporting, setIsExporting,
     newShiftColor, setNewShiftColor,

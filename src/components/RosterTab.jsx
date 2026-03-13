@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ChevronLeft, ChevronRight, Wand2, Printer, Loader2, Clock, Users,
-  Gift, Sun, Thermometer, Heart, AlertTriangle,
 } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
 import { useAutoScheduler } from '../hooks/useAutoScheduler';
@@ -11,13 +10,13 @@ import { langMap } from '../utils/translations';
 export default function RosterTab() {
   const {
     t, language, getDayOfWeekShortLocale,
-    members, shifts, roles, timeOff,
+    members, shifts, roles, timeOff, events,
     currentDate, currentYear, currentMonth, daysArray,
     assignments, setAssignments,
     minTwoDaysOff, setMinTwoDaysOff,
     isExporting, setIsExporting,
     prevMonth, nextMonth, clearMonth,
-    getMemberShiftOnDate, getMonthlyStats, coverageAlerts,
+    getMemberShiftOnDate, getMonthlyStats,
     setEditingCell, setActiveTab,
   } = useRoster();
 
@@ -82,9 +81,6 @@ export default function RosterTab() {
         tableEl.style.width = '100%';
         tableEl.style.height = 'auto';
       }
-
-      // Remove coverage alerts and leave/events rows from PDF
-      clone.querySelectorAll('[data-print-hide]').forEach(el => el.remove());
 
       // Force all table borders to black for readability
       clone.querySelectorAll('table, table thead, table tbody, table tr, table td, table th').forEach(el => {
@@ -232,6 +228,19 @@ export default function RosterTab() {
                       else if (memberOffType === 'holiday') { display = 'HOL'; cellClass = 'text-orange-600 font-bold'; baseBg = 'bg-orange-50'; }
                       else if (memberOffType === 'sick') { display = t('sick'); cellClass = 'text-red-700 font-bold'; baseBg = 'bg-red-50'; }
                       else if (memberOffType === 'wish') { display = 'WSH'; cellClass = 'text-pink-600 font-bold'; baseBg = 'bg-pink-50'; }
+                      else if (memberOffType === 'unpaid') { display = t('unpaid'); cellClass = 'text-amber-700 font-bold'; baseBg = 'bg-amber-50'; }
+                      else if (memberOffType && memberOffType.startsWith('event_')) {
+                        const eventDef = events.find(ev => `event_${ev.id}` === memberOffType);
+                        display = eventDef ? (eventDef.abbreviation || eventDef.name.substring(0, 3).toUpperCase()) : 'EVT';
+                        if (eventDef?.color) {
+                          cellClass = 'font-bold';
+                          cellStyle = { color: eventDef.color };
+                          baseBg = '';
+                        } else {
+                          cellClass = 'text-teal-700 font-bold';
+                          baseBg = 'bg-teal-50';
+                        }
+                      }
                       else if (assignedShift) {
                         display = assignedShift.name;
                         cellClass = 'font-bold';
@@ -261,66 +270,6 @@ export default function RosterTab() {
                   </tr>
                 ))}
 
-                {/* Leave & Events Row */}
-                <tr data-print-hide className="bg-slate-50/80 border-t-2 border-slate-300 print:hidden">
-                  <td className="px-2 py-0 border-r border-slate-200 sticky left-0 bg-slate-100 shadow-[1px_0_0_0_rgba(226,232,240,1)] z-10 text-left h-12 sm:h-16">
-                    <div className="font-semibold text-slate-700 text-[9px] sm:text-[11px] uppercase tracking-wider">{t('leave_events')}</div>
-                  </td>
-                  {daysArray.map(day => {
-                    const dateKey = getDateKey(currentYear, currentMonth, day);
-                    const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
-                    const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
-
-                    let events = [];
-                    members.forEach(m => {
-                      if (m.birthday && m.birthday.substring(5) === dateKey.substring(5)) events.push({ member: m, type: 'birthday' });
-                      if (timeOff[dateKey]?.[m.id]) events.push({ member: m, type: timeOff[dateKey][m.id] });
-                    });
-
-                    return (
-                      <td key={`events-${dateKey}`} className={`p-0.5 border-r border-slate-200 align-top h-12 sm:h-16 overflow-hidden ${isFriSat ? 'bg-blue-50/40' : ''}`}>
-                        <div className="flex flex-col gap-0.5 h-full overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          {events.map((ev, i) => (
-                            <div key={i} className={`text-[8px] sm:text-[9px] px-0.5 py-0.5 rounded border flex items-center justify-center lg:justify-start gap-0.5 ${ev.member.color} bg-white shadow-sm leading-none`} title={`${ev.member.name} - ${ev.type}`}>
-                              {ev.type === 'birthday' && <Gift className="w-2.5 h-2.5 text-indigo-500 shrink-0 hidden lg:block" />}
-                              {ev.type === 'holiday' && <Sun className="w-2.5 h-2.5 text-orange-500 shrink-0 hidden lg:block" />}
-                              {ev.type === 'sick' && <Thermometer className="w-2.5 h-2.5 text-red-500 shrink-0 hidden lg:block" />}
-                              {ev.type === 'wish' && <Heart className="w-2.5 h-2.5 text-pink-500 shrink-0 hidden lg:block" />}
-                              <span className="truncate font-medium">{ev.member.name.split(' ')[0].substring(0, 3)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* Coverage Alerts Row */}
-                <tr data-print-hide className="bg-red-50/80 border-t-2 border-red-200 print:hidden">
-                  <td className="px-2 py-0 border-r border-red-200 sticky left-0 bg-red-50 shadow-[1px_0_0_0_rgba(254,202,202,1)] z-10 text-left h-12 sm:h-16">
-                    <div className="font-bold text-red-700 text-[9px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" /> <span className="hidden sm:inline">{t('coverage_alerts')}</span>
-                    </div>
-                  </td>
-                  {daysArray.map(day => {
-                    const dateKey = getDateKey(currentYear, currentMonth, day);
-                    const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
-                    const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
-                    const alerts = coverageAlerts[dateKey] || [];
-
-                    return (
-                      <td key={`alert-${dateKey}`} className={`p-0.5 border-r border-red-200 align-top h-12 sm:h-16 overflow-hidden ${isFriSat ? 'bg-red-100/40' : ''}`}>
-                        <div className="flex flex-col gap-0.5 h-full overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          {alerts.map((al, i) => (
-                            <div key={i} className="text-[8px] sm:text-[9px] px-0.5 py-0.5 rounded border border-red-300 flex items-center justify-center gap-1 bg-white text-red-700 shadow-sm font-bold leading-none" title={`${al.name} ${t('understaffed')} (${al.assigned}/${al.target} ${t('target')})`}>
-                              <span className="truncate">{al.name}: {al.assigned}/{al.target}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
               </tbody>
             </table>
           </div>
@@ -369,10 +318,47 @@ export default function RosterTab() {
                         <span className="font-semibold text-pink-600">{stats.wishDays}</span>
                       </div>
                     </div>
+                    {(stats.unpaidDays > 0 || stats.eventDays > 0) && (
+                      <div className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded-md border border-slate-100 space-y-1">
+                        {stats.unpaidDays > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-amber-500 uppercase">{t('unpaid_days_taken')}</span>
+                            <span className="font-semibold text-amber-600">{stats.unpaidDays}</span>
+                          </div>
+                        )}
+                        {Object.entries(stats.eventBreakdown).map(([eventId, count]) => {
+                          const ev = events.find(e => e.id === eventId);
+                          if (!ev) return null;
+                          const evColor = ev.color || '#0f766e';
+                          return (
+                            <div key={eventId} className="flex justify-between items-center">
+                              <span className="text-[10px] uppercase truncate mr-2" style={{ color: evColor }} title={ev.explanation || ev.name}>
+                                {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
+                              </span>
+                              <span className="font-semibold" style={{ color: evColor }}>{count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
+            {events.length > 0 && (
+              <div className="mt-3 print:mt-2">
+                <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('event_legend')}</h4>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {events.map(ev => (
+                    <span key={ev.id} className="text-xs text-slate-600">
+                      <span className="font-bold" style={{ color: ev.color || '#0f766e' }}>{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span>
+                      {' — '}
+                      {ev.explanation || ev.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

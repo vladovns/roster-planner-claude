@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { useRoster } from '../../context/RosterContext';
 
 export default function AssignmentModal() {
-  const { t, editingCell, setEditingCell, members, shifts, handleCellUpdate } = useRoster();
+  const { t, editingCell, setEditingCell, members, shifts, events, handleCellUpdate } = useRoster();
 
   if (!editingCell) return null;
 
@@ -49,6 +49,34 @@ export default function AssignmentModal() {
               WSH <br /><span className="text-[10px] font-normal opacity-70 text-slate-500">{t('wish_day')}</span>
             </button>
           </div>
+
+          {/* Unpaid Leave button */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <button
+              onClick={() => handleCellUpdate(editingCell.dateKey, editingCell.memberId, null, 'unpaid')}
+              className={`p-3 rounded-lg border text-sm font-bold transition-colors ${editingCell.currentOffType === 'unpaid' ? 'bg-amber-50 border-amber-500 text-amber-700' : 'bg-white border-slate-200 text-amber-600 hover:bg-amber-50'}`}
+            >
+              {t('unpaid')} <br /><span className="text-[10px] font-normal opacity-70 text-slate-500">{t('unpaid_leave')}</span>
+            </button>
+          </div>
+
+          {/* Events */}
+          {events.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{t('events')}</p>
+              <div className="grid grid-cols-2 gap-3">
+                {events.map(ev => (
+                  <button
+                    key={ev.id}
+                    onClick={() => handleCellUpdate(editingCell.dateKey, editingCell.memberId, null, `event_${ev.id}`)}
+                    className={`p-3 rounded-lg border text-sm font-bold transition-colors ${editingCell.currentOffType === `event_${ev.id}` ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-white border-slate-200 text-teal-600 hover:bg-teal-50'}`}
+                  >
+                    <span className="text-teal-800">{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span> {ev.name} <br /><span className="text-[10px] font-normal opacity-70 text-slate-500">{ev.hours}h{ev.explanation ? ` — ${ev.explanation}` : ''}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             {shifts.map(s => (

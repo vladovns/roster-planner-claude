@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { getDateKey, check11HourRest, calculateShiftDuration } from '../utils/helpers';
+import { getDateKey, check11HourRest } from '../utils/helpers';
 import { useRoster } from '../context/RosterContext';
 
 /**
@@ -30,6 +30,23 @@ export function useAutoScheduler() {
     let mandatoryRestReason = {}; // '5day' = from 5-consecutive rule, 'twoDayOff' = from min-2-days-off rule
     let currentStretchShift = {};
     let daysWorkedThisMonth = {};
+
+    // Pre-calculate guaranteed days off per member (time off + birthdays + fixed days off)
+    // so maxDaysOff logic can plan ahead. Wish days count as days off.
+    const guaranteedDaysOff = {};
+    members.forEach(m => {
+      let count = 0;
+      const mRole = roles.find(r => r.name === m.role) || { fixedDaysOff: [] };
+      for (let day = 1; day <= daysCount; day++) {
+        const dk = getDateKey(currentYear, currentMonth, day);
+        const offType = timeOff[dk]?.[m.id];
+        if (offType) { count++; continue; }
+        if (m.birthday && m.birthday.substring(5) === dk.substring(5)) { count++; continue; }
+        const dow = new Date(currentYear, currentMonth, day).getDay().toString();
+        if ((mRole.fixedDaysOff || []).map(String).includes(dow)) { count++; }
+      }
+      guaranteedDaysOff[m.id] = count;
+    });
 
     const getShiftOnDate = (dateKey, memberId) => {
       const source = newAssignments[dateKey] || assignments[dateKey];
@@ -125,9 +142,12 @@ export function useAutoScheduler() {
       const dateObj = new Date(currentYear, currentMonth, d);
       const dayOfWeekNum = dateObj.getDay().toString();
       const dateKey = getDateKey(currentYear, currentMonth, d);
-      if (!newAssignments[dateKey]) newAssignments[dateKey] = {};
+      // Clear existing assignments for this day so the scheduler builds
+      // a fresh, balanced schedule (prevents stale over-assignments from
+      // a previous run blocking other shifts).
+      newAssignments[dateKey] = {};
 
-      const prioritizedShifts = [...shifts].sort((a, b) => (a.priority || 10) - (b.priority || 10));
+      const prioritizedShifts = [...shifts].sort((a, b) => getShiftStartHour(a.time) - getShiftStartHour(b.time));
 
       // Determine which shifts need staff today
       const activeShifts = prioritizedShifts.filter(s => {
@@ -168,10 +188,11 @@ export function useAutoScheduler() {
             currentStretchShift[m.id] = null;
           }
           consecutiveDays[m.id] = 0;
-          // Only eligible for pull-back from the 5-consecutive-day rule,
-          // and only on their last mandatory rest day (already had at least 1 day off).
-          // Never pull back members resting due to the min-2-days-off rule.
-          if (reason === '5day' && remainingBeforeDecrement === 1) {
+          // Eligible for pull-back on the last mandatory rest day (already had
+          // at least 1 day off). This covers both the 5-consecutive-day rule and
+          // the min-2-days-off rule so understaffing doesn't occur when the pool
+          // is tight.
+          if (remainingBeforeDecrement === 1) {
             mandatoryRestMembers.push(m);
           }
           return;
@@ -187,14 +208,12 @@ export function useAutoScheduler() {
       }, 0);
       const minRequired = Math.max(totalMinStaffing, 2);
 
-      // If not enough available employees, pull back mandatory-rest members
-      // to guarantee minimum coverage (breaking the 5-consecutive-day rule)
+      // Determine pulled-back members (kept separate so they only fill gaps
+      // left after regular available members are assigned).
+      let pulledBack = [];
       if (available.length < minRequired && mandatoryRestMembers.length > 0) {
         const deficit = minRequired - available.length;
-        const pullBack = mandatoryRestMembers.slice(0, deficit);
-        pullBack.forEach(m => {
-          available.push(m);
-        });
+        pulledBack = mandatoryRestMembers.slice(0, deficit);
       }
 
       let workedToday = new Set();
@@ -204,22 +223,28 @@ export function useAutoScheduler() {
         const target = s.requirements?.[dayOfWeekNum] !== undefined ? s.requirements[dayOfWeekNum] : 1;
         return sum + target - (newAssignments[dateKey]?.[s.id]?.length || 0);
       }, 0);
-      const capacityConstrained = available.length < totalDemand && activeShifts.length > 1;
+      const allAvailable = [...available, ...pulledBack];
+      const capacityConstrained = allAvailable.length < totalDemand && activeShifts.length > 1;
 
-      // When capacity is constrained, reorder shifts so the latest shift is
-      // always covered: fill earliest first, then latest, skipping mid shifts.
+      // When capacity is constrained, drop the earliest (day) shifts first
+      // and prioritize later shifts. E.g. with B(10:00), S1(16:00), ST1(18:30)
+      // and only 2 available: drop B, fill S1 + ST1.
       let fillOrder;
       if (capacityConstrained) {
         const sorted = [...activeShifts].sort((a, b) => getShiftStartHour(a.time) - getShiftStartHour(b.time));
-        const latest = sorted.pop();   // latest shift by start time
-        const earliest = sorted.shift(); // earliest shift by start time
-        // Order: earliest, latest, then any remaining mid shifts
-        fillOrder = [earliest, latest, ...sorted].filter(Boolean);
+        const excess = totalDemand - allAvailable.length;
+        // Drop the N earliest shifts that can't be staffed
+        fillOrder = sorted.slice(excess);
       } else {
         fillOrder = prioritizedShifts;
       }
 
-      // 1. FILL SHIFTS TO MEET REQUIREMENTS
+      // Pre-compute earliest/latest active shift start hours for option-1 scoring
+      const activeStartHours = activeShifts.map(s => getShiftStartHour(s.time));
+      const earliestActiveStart = Math.min(...activeStartHours);
+      const latestActiveStart = Math.max(...activeStartHours);
+
+      // 1. FILL SHIFTS TO MEET REQUIREMENTS (regular available first)
       fillOrder.forEach(shift => {
         const target = shift.requirements?.[dayOfWeekNum] !== undefined ? shift.requirements[dayOfWeekNum] : 1;
         if (target <= 0) return;
@@ -263,6 +288,22 @@ export function useAutoScheduler() {
             // this month to distribute shifts more evenly across the team
             score += (daysWorkedThisMonth[m.id] || 0) * 8;
 
+            // maxDaysOff pressure: strongly prefer members who are at risk of
+            // exceeding their max days off limit. The tighter the budget, the
+            // stronger the pull toward working today.
+            if (m.maxDaysOff) {
+              const maxOff = parseInt(m.maxDaysOff, 10);
+              if (!isNaN(maxOff)) {
+                const worked = daysWorkedThisMonth[m.id] || 0;
+                const minWorkDays = daysCount - maxOff;
+                const remainingDays = daysCount - d + 1;
+                const daysLeftToWork = minWorkDays - worked;
+                // offBudget: how many rest days the member can still "afford"
+                const offBudget = remainingDays - daysLeftToWork;
+                if (offBudget <= 3) score -= (4 - offBudget) * 150; // tight → strong pull
+              }
+            }
+
             const isNewStretch = (consecutiveDays[m.id] || 0) === 0;
             const currShift = currentStretchShift[m.id];
             const allocOption = m.allocationOption;
@@ -273,26 +314,56 @@ export function useAutoScheduler() {
               if (!isNewStretch && currShift === shift.id) score -= 80;
               else if (!isNewStretch && currShift !== shift.id) score += 80;
             } else if (allocOption === '1') {
-              // Option 1: Maximize hours at beginning and end of work stretch
-              // streakIncludingToday: consecutive days if this member works today
+              // Option 1: Maximize hours — late shifts at start of stretch,
+              // early shifts at end. Creates a gradient across the work stretch.
+
+              // Per-member eligible shifts (role-filtered) so B doesn't skew
+              // scoring for members who can only do S1/ST1/S2.
+              const eligibleActiveShifts = activeShifts.filter(s => {
+                if (mRole.excludedShiftIds?.includes(s.id)) return false;
+                if (mRole.preferenceType === 'only' && mRole.preferredShiftId !== s.id) return false;
+                return true;
+              });
+              const eligibleStarts = eligibleActiveShifts.map(s => getShiftStartHour(s.time));
+              const memEarliest = eligibleStarts.length > 0 ? Math.min(...eligibleStarts) : earliestActiveStart;
+              const memLatest = eligibleStarts.length > 0 ? Math.max(...eligibleStarts) : latestActiveStart;
+
               const streakIncludingToday = (consecutiveDays[m.id] || 0) + 1;
 
-              if (isNewStretch) {
-                // First day of stretch (after day off): prefer later/longer shifts
-                // Later start = higher hour → lower score (preferred)
-                score -= (shiftStartHour - 6) * 10;
-              } else {
-                // Check if tomorrow will be a day off (making today the last day)
-                const tomorrowIsOff = willBeDayOff(d + 1, m.id, m, streakIncludingToday);
-                if (tomorrowIsOff) {
-                  // Last day of stretch: prefer earlier shifts
-                  // Earlier start = lower hour → lower score (preferred)
-                  score -= (22 - shiftStartHour) * 10;
-                } else {
-                  // Mid-stretch: mild consistency preference
-                  if (currShift === shift.id) score -= 20;
-                  else if (currShift !== shift.id) score += 20;
+              // Look-ahead: how many working days remain in this stretch (incl. today).
+              // Uses 5-consecutive-day rule + upcoming forced off days.
+              let daysLeftInStretch = 1;
+              if (!isNewStretch) {
+                for (let look = 1; look <= (5 - streakIncludingToday); look++) {
+                  if (willBeDayOff(d + look, m.id, m, streakIncludingToday + look)) break;
+                  daysLeftInStretch++;
                 }
+              }
+
+              if (isNewStretch) {
+                // First day: strong bonus for latest eligible shift, penalty for others.
+                // Weight (600) must exceed 5th-day penalty (500) so shift *choice*
+                // is respected even when a member works their 5th consecutive day.
+                if (shiftStartHour >= memLatest - 0.5) {
+                  score -= 600;
+                } else {
+                  score += (memLatest - shiftStartHour) * 120;
+                }
+              } else if (daysLeftInStretch === 1) {
+                // Last day: strong bonus for earliest eligible shift, penalty for others.
+                if (shiftStartHour <= memEarliest + 0.5) {
+                  score -= 600;
+                } else {
+                  score += (shiftStartHour - memEarliest) * 120;
+                }
+              } else if (daysLeftInStretch === 2) {
+                // Second-to-last: moderate preference for earlier shifts
+                // (starts the transition without full commitment)
+                score += (shiftStartHour - memEarliest) * 40;
+              } else {
+                // Mid-stretch: strong consistency
+                if (currShift === shift.id) score -= 80;
+                else if (currShift !== shift.id) score += 80;
               }
             } else {
               // No preference: mild consistency bonus (original behavior)
@@ -327,17 +398,57 @@ export function useAutoScheduler() {
         }
       });
 
+      // 1b. FILL REMAINING GAPS WITH PULLED-BACK MEMBERS
+      // Pulled-back members only fill shifts that regular members couldn't cover,
+      // so they don't compete with (and displace) regular available members.
+      if (pulledBack.length > 0) {
+        fillOrder.forEach(shift => {
+          const target = shift.requirements?.[dayOfWeekNum] !== undefined ? shift.requirements[dayOfWeekNum] : 1;
+          if (target <= 0) return;
+          if (!newAssignments[dateKey][shift.id]) newAssignments[dateKey][shift.id] = [];
+          const currentlyAssigned = newAssignments[dateKey][shift.id];
+          let needed = target - currentlyAssigned.length;
+          if (needed <= 0) return;
+
+          let pbAvailable = pulledBack.filter(m => !workedToday.has(m.id) && isEligibleForShift(m, shift, d));
+          while (needed > 0 && pbAvailable.length > 0) {
+            const chosen = pbAvailable[0];
+            newAssignments[dateKey][shift.id].push(chosen.id);
+            workedToday.add(chosen.id);
+            assignedShiftToday[chosen.id] = shift.id;
+            pbAvailable = pbAvailable.filter(m => m.id !== chosen.id);
+            needed--;
+          }
+        });
+      }
+
       // 2. FORCE ASSIGNMENT FOR MAX DAYS OFF
+      // Count wish days, holidays, sick days, birthdays, and fixed days off
+      // toward the days-off budget. Force work when remaining days are tight.
       available.forEach(m => {
         if (!workedToday.has(m.id) && m.maxDaysOff) {
           const maxOff = parseInt(m.maxDaysOff, 10);
           if (!isNaN(maxOff)) {
-            const minWorkDays = daysCount - maxOff;
-            const remainingDays = daysCount - d + 1;
-            const daysLeftToWork = minWorkDays - (daysWorkedThisMonth[m.id] || 0);
-
-            if (daysLeftToWork >= remainingDays) {
-              let eligibleShifts = prioritizedShifts.filter(shift => isEligibleForShift(m, shift, d));
+            const worked = daysWorkedThisMonth[m.id] || 0;
+            // Days already off this month (not worked, not today)
+            const daysElapsed = d - 1;
+            const daysOffSoFar = daysElapsed - worked;
+            // Future guaranteed days off (from day d+1 onward)
+            let futureGuaranteedOff = 0;
+            for (let fd = d + 1; fd <= daysCount; fd++) {
+              const fdk = getDateKey(currentYear, currentMonth, fd);
+              const offType = timeOff[fdk]?.[m.id];
+              if (offType) { futureGuaranteedOff++; continue; }
+              if (m.birthday && m.birthday.substring(5) === fdk.substring(5)) { futureGuaranteedOff++; continue; }
+              const mRole = roles.find(r => r.name === m.role) || { fixedDaysOff: [] };
+              const dow = new Date(currentYear, currentMonth, fd).getDay().toString();
+              if ((mRole.fixedDaysOff || []).map(String).includes(dow)) { futureGuaranteedOff++; }
+            }
+            // If taking today off would exceed the budget (considering future
+            // guaranteed days off), force a work assignment.
+            const projectedDaysOff = daysOffSoFar + 1 + futureGuaranteedOff; // +1 = today off
+            if (projectedDaysOff > maxOff) {
+              let eligibleShifts = activeShifts.filter(shift => isEligibleForShift(m, shift, d));
 
               if (eligibleShifts.length > 0) {
                 eligibleShifts.sort((a, b) => {

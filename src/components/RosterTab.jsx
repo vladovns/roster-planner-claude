@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ChevronLeft, ChevronRight, Wand2, Printer, Loader2, Clock, Users,
-  Gift, Sun, Thermometer, Heart, AlertTriangle,
+  Gift, Sun, Thermometer, Heart, AlertTriangle, DollarSign, CalendarCheck,
 } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
 import { useAutoScheduler } from '../hooks/useAutoScheduler';
@@ -11,7 +11,7 @@ import { langMap } from '../utils/translations';
 export default function RosterTab() {
   const {
     t, language, getDayOfWeekShortLocale,
-    members, shifts, roles, timeOff,
+    members, shifts, roles, timeOff, events,
     currentDate, currentYear, currentMonth, daysArray,
     assignments, setAssignments,
     minTwoDaysOff, setMinTwoDaysOff,
@@ -232,6 +232,13 @@ export default function RosterTab() {
                       else if (memberOffType === 'holiday') { display = 'HOL'; cellClass = 'text-orange-600 font-bold'; baseBg = 'bg-orange-50'; }
                       else if (memberOffType === 'sick') { display = t('sick'); cellClass = 'text-red-700 font-bold'; baseBg = 'bg-red-50'; }
                       else if (memberOffType === 'wish') { display = 'WSH'; cellClass = 'text-pink-600 font-bold'; baseBg = 'bg-pink-50'; }
+                      else if (memberOffType === 'unpaid') { display = t('unpaid'); cellClass = 'text-amber-700 font-bold'; baseBg = 'bg-amber-50'; }
+                      else if (memberOffType && memberOffType.startsWith('event_')) {
+                        const eventDef = events.find(ev => `event_${ev.id}` === memberOffType);
+                        display = eventDef ? eventDef.name.substring(0, 3).toUpperCase() : 'EVT';
+                        cellClass = 'text-teal-700 font-bold';
+                        baseBg = 'bg-teal-50';
+                      }
                       else if (assignedShift) {
                         display = assignedShift.name;
                         cellClass = 'font-bold';
@@ -271,21 +278,23 @@ export default function RosterTab() {
                     const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
                     const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
 
-                    let events = [];
+                    let eventsForDay = [];
                     members.forEach(m => {
-                      if (m.birthday && m.birthday.substring(5) === dateKey.substring(5)) events.push({ member: m, type: 'birthday' });
-                      if (timeOff[dateKey]?.[m.id]) events.push({ member: m, type: timeOff[dateKey][m.id] });
+                      if (m.birthday && m.birthday.substring(5) === dateKey.substring(5)) eventsForDay.push({ member: m, type: 'birthday' });
+                      if (timeOff[dateKey]?.[m.id]) eventsForDay.push({ member: m, type: timeOff[dateKey][m.id] });
                     });
 
                     return (
                       <td key={`events-${dateKey}`} className={`p-0.5 border-r border-slate-200 align-top h-12 sm:h-16 overflow-hidden ${isFriSat ? 'bg-blue-50/40' : ''}`}>
                         <div className="flex flex-col gap-0.5 h-full overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          {events.map((ev, i) => (
+                          {eventsForDay.map((ev, i) => (
                             <div key={i} className={`text-[8px] sm:text-[9px] px-0.5 py-0.5 rounded border flex items-center justify-center lg:justify-start gap-0.5 ${ev.member.color} bg-white shadow-sm leading-none`} title={`${ev.member.name} - ${ev.type}`}>
                               {ev.type === 'birthday' && <Gift className="w-2.5 h-2.5 text-indigo-500 shrink-0 hidden lg:block" />}
                               {ev.type === 'holiday' && <Sun className="w-2.5 h-2.5 text-orange-500 shrink-0 hidden lg:block" />}
                               {ev.type === 'sick' && <Thermometer className="w-2.5 h-2.5 text-red-500 shrink-0 hidden lg:block" />}
                               {ev.type === 'wish' && <Heart className="w-2.5 h-2.5 text-pink-500 shrink-0 hidden lg:block" />}
+                              {ev.type === 'unpaid' && <DollarSign className="w-2.5 h-2.5 text-amber-600 shrink-0 hidden lg:block" />}
+                              {ev.type?.startsWith('event_') && <CalendarCheck className="w-2.5 h-2.5 text-teal-500 shrink-0 hidden lg:block" />}
                               <span className="truncate font-medium">{ev.member.name.split(' ')[0].substring(0, 3)}</span>
                             </div>
                           ))}
@@ -369,6 +378,22 @@ export default function RosterTab() {
                         <span className="font-semibold text-pink-600">{stats.wishDays}</span>
                       </div>
                     </div>
+                    {(stats.unpaidDays > 0 || stats.eventDays > 0) && (
+                      <div className="grid grid-cols-2 gap-1 text-xs text-slate-600 bg-slate-50 p-1.5 rounded-md border border-slate-100">
+                        {stats.unpaidDays > 0 && (
+                          <div className="flex flex-col text-center">
+                            <span className="text-[10px] text-amber-500 uppercase">{t('unpaid_days_taken')}</span>
+                            <span className="font-semibold text-amber-600">{stats.unpaidDays}</span>
+                          </div>
+                        )}
+                        {stats.eventDays > 0 && (
+                          <div className="flex flex-col text-center">
+                            <span className="text-[10px] text-teal-400 uppercase">{t('events')}</span>
+                            <span className="font-semibold text-teal-600">{stats.eventDays}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

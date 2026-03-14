@@ -274,89 +274,65 @@ export default function RosterTab() {
             </table>
           </div>
 
-          {/* Monthly Summary Footer */}
-          <div className="border-t border-slate-200 bg-slate-100 p-4 shrink-0 overflow-x-auto shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] print:break-inside-avoid print:bg-white print:border-none print:shadow-none print:mt-6 print:p-0">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              {t('monthly_summary')} ({currentDate.toLocaleString(langMap[language] || 'en-US', { month: 'long', year: 'numeric' })})
-            </h3>
-            <div className="flex gap-3 pb-1 w-max print:flex-wrap print:w-full print:gap-2">
-              {members.map(member => {
-                const stats = getMonthlyStats(member.id);
-                return (
-                  <div key={member.id} className="w-[180px] bg-white border border-slate-200 shadow-sm rounded-lg p-3 flex flex-col gap-2 shrink-0 print:w-[140px] print:p-2 print:gap-1 print:rounded-md">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${member.color}`}>
-                        {member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                      </div>
-                      <span className="font-medium text-sm text-slate-900 truncate">{member.name}</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1 text-xs text-slate-600 bg-slate-50 p-2 rounded-md border border-slate-100">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-slate-400 uppercase">{t('shifts_worked')}</span>
-                        <span className="font-semibold text-slate-700">{stats.shiftsWorked}</span>
-                      </div>
-                      <div className="flex flex-col text-center">
-                        <span className="text-[10px] text-slate-400 uppercase">{t('hours_worked')}</span>
-                        <span className="font-semibold text-slate-700">{stats.hoursWorked}</span>
-                      </div>
-                      <div className="flex flex-col text-right">
-                        <span className="text-[10px] text-slate-400 uppercase">{t('rest_days')}</span>
-                        <span className="font-semibold text-green-600">{stats.restDays}</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1 text-xs text-slate-600 bg-slate-50 p-1.5 rounded-md border border-slate-100">
-                      <div className="flex flex-col text-center">
-                        <span className="text-[10px] text-orange-400 uppercase">{t('holidays_taken')}</span>
-                        <span className="font-semibold text-orange-600">{stats.holidays}</span>
-                      </div>
-                      <div className="flex flex-col text-center">
-                        <span className="text-[10px] text-red-400 uppercase">{t('sick_days_taken')}</span>
-                        <span className="font-semibold text-red-600">{stats.sickDays}</span>
-                      </div>
-                      <div className="flex flex-col text-center">
-                        <span className="text-[10px] text-pink-400 uppercase">{t('wish_days_taken')}</span>
-                        <span className="font-semibold text-pink-600">{stats.wishDays}</span>
-                      </div>
-                    </div>
-                    {(stats.unpaidDays > 0 || stats.eventDays > 0) && (
-                      <div className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded-md border border-slate-100 space-y-1">
-                        {stats.unpaidDays > 0 && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] text-amber-500 uppercase">{t('unpaid_days_taken')}</span>
-                            <span className="font-semibold text-amber-600">{stats.unpaidDays}</span>
-                          </div>
-                        )}
-                        {Object.entries(stats.eventBreakdown).map(([eventId, count]) => {
-                          const ev = events.find(e => e.id === eventId);
-                          if (!ev) return null;
-                          const evColor = ev.color || '#0f766e';
-                          return (
-                            <div key={eventId} className="flex justify-between items-center">
-                              <span className="text-[10px] uppercase truncate mr-2" style={{ color: evColor }} title={ev.explanation || ev.name}>
-                                {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
-                              </span>
-                              <span className="font-semibold" style={{ color: evColor }}>{count}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {events.length > 0 && (
-              <div className="mt-3 print:mt-2">
-                <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('event_legend')}</h4>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {/* Monthly Summary Footer — compact table */}
+          <div className="border-t border-slate-200 bg-slate-50 px-4 py-2 shrink-0 overflow-x-auto print:break-inside-avoid print:bg-white print:border-none print:shadow-none print:mt-4 print:p-0">
+            <table className="w-full min-w-[600px] text-[10px] sm:text-xs border-collapse">
+              <thead>
+                <tr className="text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-wider">
+                  <th className="text-left py-1 px-1 font-semibold w-[100px] sm:w-[120px]">{t('monthly_summary')}</th>
+                  <th className="text-center py-1 px-1 font-semibold">{t('shifts_worked')}</th>
+                  <th className="text-center py-1 px-1 font-semibold">{t('hours_worked')}</th>
+                  <th className="text-center py-1 px-1 font-semibold">{t('rest_days')}</th>
+                  <th className="text-center py-1 px-1 font-semibold text-orange-400">{t('holidays_taken')}</th>
+                  <th className="text-center py-1 px-1 font-semibold text-red-400">{t('sick_days_taken')}</th>
+                  <th className="text-center py-1 px-1 font-semibold text-pink-400">{t('wish_days_taken')}</th>
+                  <th className="text-center py-1 px-1 font-semibold text-amber-400">{t('unpaid_days_taken')}</th>
                   {events.map(ev => (
-                    <span key={ev.id} className="text-xs text-slate-600">
-                      <span className="font-bold" style={{ color: ev.color || '#0f766e' }}>{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span>
-                      {' — '}
-                      {ev.explanation || ev.name}
-                    </span>
+                    <th key={ev.id} className="text-center py-1 px-1 font-semibold" style={{ color: ev.color || '#0f766e' }} title={ev.explanation || ev.name}>
+                      {ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}
+                    </th>
                   ))}
-                </div>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {members.map(member => {
+                  const stats = getMonthlyStats(member.id);
+                  return (
+                    <tr key={member.id} className="hover:bg-slate-100/50">
+                      <td className="py-1 px-1 text-left">
+                        <div className="flex items-center gap-1.5">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0 ${member.color}`}>
+                            {member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-slate-900 truncate">{member.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-1 px-1 text-center font-semibold text-slate-700">{stats.shiftsWorked}</td>
+                      <td className="py-1 px-1 text-center font-semibold text-slate-700">{stats.hoursWorked}</td>
+                      <td className="py-1 px-1 text-center font-semibold text-green-600">{stats.restDays}</td>
+                      <td className="py-1 px-1 text-center font-semibold text-orange-600">{stats.holidays || '—'}</td>
+                      <td className="py-1 px-1 text-center font-semibold text-red-600">{stats.sickDays || '—'}</td>
+                      <td className="py-1 px-1 text-center font-semibold text-pink-600">{stats.wishDays || '—'}</td>
+                      <td className="py-1 px-1 text-center font-semibold text-amber-600">{stats.unpaidDays || '—'}</td>
+                      {events.map(ev => (
+                        <td key={ev.id} className="py-1 px-1 text-center font-semibold" style={{ color: ev.color || '#0f766e' }}>
+                          {stats.eventBreakdown[ev.id] || '—'}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {events.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-500 border-t border-slate-200 pt-1.5">
+                {events.map(ev => (
+                  <span key={ev.id}>
+                    <span className="font-bold" style={{ color: ev.color || '#0f766e' }}>{ev.abbreviation || ev.name.substring(0, 3).toUpperCase()}</span>
+                    {' = '}
+                    {ev.explanation || ev.name}
+                  </span>
+                ))}
               </div>
             )}
           </div>

@@ -336,6 +336,19 @@ export function RosterProvider({ children }) {
     });
   }, []);
 
+  const removeTimeOffBlock = useCallback((dateKeys, memberId) => {
+    setTimeOff(prev => {
+      const newTimeOff = structuredClone(prev);
+      dateKeys.forEach(dateKey => {
+        if (newTimeOff[dateKey]?.[memberId]) {
+          delete newTimeOff[dateKey][memberId];
+          if (Object.keys(newTimeOff[dateKey]).length === 0) delete newTimeOff[dateKey];
+        }
+      });
+      return newTimeOff;
+    });
+  }, []);
+
   // --- EVENT HANDLERS ---
   const addEvent = useCallback((e) => {
     e.preventDefault();
@@ -506,7 +519,7 @@ export function RosterProvider({ children }) {
     minTwoDaysOff, setMinTwoDaysOff,
     currentDate, currentYear, currentMonth, daysCount, daysArray,
     assignments, setAssignments,
-    timeOff, setTimeOff, timeOffError, setTimeOffError, addTimeOff, removeTimeOffEntry,
+    timeOff, setTimeOff, timeOffError, setTimeOffError, addTimeOff, removeTimeOffEntry, removeTimeOffBlock,
     events, setEvents, addEvent, updateEvent, removeEvent,
     editingCell, setEditingCell,
     isExporting, setIsExporting,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sun, Plus, Trash2, Thermometer, Heart, CalendarCheck, DollarSign, Clock, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
-import { getDayOfWeekShort, formatDateDDMMYYYY, EVENT_COLORS } from '../utils/helpers';
+import { getDayOfWeekShort, formatDateDDMMYYYY, getDateKey, EVENT_COLORS } from '../utils/helpers';
 
 function getTypeIcon(type, events) {
   if (type === 'holiday') return <Sun className="w-3 h-3 text-orange-500" />;
@@ -112,10 +112,44 @@ function EventEditRow({ ev, t, updateEvent, removeEvent }) {
   );
 }
 
+function groupTimeOffEntries(timeOff) {
+  const entries = [];
+  Object.entries(timeOff).forEach(([dateKey, offObj]) => {
+    Object.entries(offObj).forEach(([memberId, type]) => {
+      entries.push({ dateKey, memberId, type });
+    });
+  });
+
+  entries.sort((a, b) => {
+    if (a.memberId !== b.memberId) return a.memberId.localeCompare(b.memberId);
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return a.dateKey.localeCompare(b.dateKey);
+  });
+
+  const groups = [];
+  entries.forEach(entry => {
+    const last = groups[groups.length - 1];
+    if (last && last.memberId === entry.memberId && last.type === entry.type) {
+      const lastDate = new Date(last.endDateKey + 'T12:00:00');
+      lastDate.setDate(lastDate.getDate() + 1);
+      const nextKey = getDateKey(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate());
+      if (nextKey === entry.dateKey) {
+        last.endDateKey = entry.dateKey;
+        last.dateKeys.push(entry.dateKey);
+        return;
+      }
+    }
+    groups.push({ memberId: entry.memberId, type: entry.type, startDateKey: entry.dateKey, endDateKey: entry.dateKey, dateKeys: [entry.dateKey] });
+  });
+
+  groups.sort((a, b) => a.startDateKey.localeCompare(b.startDateKey));
+  return groups;
+}
+
 export default function TimeOffTab() {
   const {
     t, language, members, timeOff, timeOffError,
-    addTimeOff, removeTimeOffEntry,
+    addTimeOff, removeTimeOffEntry, removeTimeOffBlock,
     events, addEvent, updateEvent, removeEvent,
   } = useRoster();
 
@@ -249,31 +283,40 @@ export default function TimeOffTab() {
         <ul className="divide-y divide-slate-200">
           {Object.keys(timeOff).length === 0 ? (
             <li className="p-6 text-center text-slate-500">{t('no_time_off')}</li>
-          ) : Object.entries(timeOff).sort(([dateA], [dateB]) => dateA.localeCompare(dateB)).map(([dateKey, offObj]) => {
-            return Object.entries(offObj).map(([memberId, type]) => {
-              const member = members.find(m => m.id === memberId);
-              if (!member) return null;
-              const [y, m, d] = dateKey.split('-').map(Number);
-              const dayName = getDayOfWeekShort(y, m - 1, d, language);
+          ) : groupTimeOffEntries(timeOff).map(group => {
+            const member = members.find(m => m.id === group.memberId);
+            if (!member) return null;
+            const isSingleDay = group.startDateKey === group.endDateKey;
+            const [sy, sm, sd] = group.startDateKey.split('-').map(Number);
+            const [ey, em, ed] = group.endDateKey.split('-').map(Number);
+            const startLabel = `${getDayOfWeekShort(sy, sm - 1, sd, language)}, ${formatDateDDMMYYYY(group.startDateKey)}`;
+            const endLabel = `${getDayOfWeekShort(ey, em - 1, ed, language)}, ${formatDateDDMMYYYY(group.endDateKey)}`;
 
-              return (
-                <li key={`${dateKey}-${memberId}`} className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${member.color}`}>
-                      {member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{dayName}, {formatDateDDMMYYYY(dateKey)}</p>
-                      <p className="text-xs text-slate-500 flex items-center gap-1">
-                        {getTypeIcon(type, events)}
-                        {member.name} ({getTypeLabel(type, t, events)})
-                      </p>
-                    </div>
+            return (
+              <li key={`${group.startDateKey}-${group.endDateKey}-${group.memberId}-${group.type}`} className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${member.color}`}>
+                    {member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                   </div>
-                  <button onClick={() => removeTimeOffEntry(dateKey, memberId)} className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition"><Trash2 className="w-5 h-5" /></button>
-                </li>
-              );
-            });
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">
+                      {isSingleDay ? startLabel : `${startLabel} – ${endLabel}`}
+                      {!isSingleDay && <span className="ml-2 text-xs font-normal text-slate-400">({group.dateKeys.length} days)</span>}
+                    </p>
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      {getTypeIcon(group.type, events)}
+                      {member.name} ({getTypeLabel(group.type, t, events)})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => isSingleDay ? removeTimeOffEntry(group.startDateKey, group.memberId) : removeTimeOffBlock(group.dateKeys, group.memberId)}
+                  className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </li>
+            );
           })}
         </ul>
       </div>

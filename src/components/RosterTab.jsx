@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ChevronLeft, ChevronRight, Wand2, Printer, Loader2, Clock, Users,
 } from 'lucide-react';
@@ -21,6 +21,7 @@ export default function RosterTab() {
   } = useRoster();
 
   const autoSchedule = useAutoScheduler();
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const exportToPDF = async () => {
     setIsExporting(true);
@@ -134,9 +135,27 @@ export default function RosterTab() {
             <Wand2 className="w-4 h-4" />
             {t('auto_schedule')}
           </button>
-          <button onClick={clearMonth} className="text-sm font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-4 py-1.5 rounded-md transition border border-red-200 shadow-sm">
-            {t('clear_month')}
-          </button>
+          {confirmClear ? (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-md px-3 py-1.5">
+              <span className="text-sm font-medium text-red-700">{t('clear_month')}?</span>
+              <button
+                onClick={() => { clearMonth(); setConfirmClear(false); }}
+                className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-2 py-0.5 rounded transition"
+              >
+                {t('confirm') || 'Yes'}
+              </button>
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 px-2 py-0.5 rounded transition"
+              >
+                {t('cancel') || 'Cancel'}
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmClear(true)} className="text-sm font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-4 py-1.5 rounded-md transition border border-red-200 shadow-sm">
+              {t('clear_month')}
+            </button>
+          )}
         </div>
       </div>
 

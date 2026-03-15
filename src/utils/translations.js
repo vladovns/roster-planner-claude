@@ -90,6 +90,7 @@ export const translations = {
     fully_staffed: "Fully staffed",
     shifts_assigned: "Shifts assigned",
     days: "days",
+    highlight_understaffed: "Highlight understaffed",
   },
   de: {
     app_title: "Dienstplaner",
@@ -182,6 +183,7 @@ export const translations = {
     fully_staffed: "Vollständig besetzt",
     shifts_assigned: "Zugewiesene Schichten",
     days: "Tage",
+    highlight_understaffed: "Unterbesetzte Tage markieren",
   },
 };
 

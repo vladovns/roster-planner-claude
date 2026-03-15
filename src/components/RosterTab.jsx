@@ -255,7 +255,7 @@ export default function RosterTab() {
             </div>
             <label className="flex items-center gap-1.5 ml-auto cursor-pointer select-none">
               <input type="checkbox" checked={showUnderstaffed} onChange={e => setShowUnderstaffed(e.target.checked)} className="rounded text-amber-600 focus:ring-amber-500" />
-              <span className="text-slate-500">Highlight understaffed</span>
+              <span className="text-slate-500">{t('highlight_understaffed')}</span>
             </label>
           </div>
         );

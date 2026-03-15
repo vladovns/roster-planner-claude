@@ -86,6 +86,10 @@ export const translations = {
     cancel: "Cancel",
     edit: "Edit",
     color: "Color",
+    confirm: "Yes",
+    fully_staffed: "Fully staffed",
+    shifts_assigned: "Shifts assigned",
+    days: "days",
   },
   de: {
     app_title: "Dienstplaner",
@@ -174,6 +178,10 @@ export const translations = {
     cancel: "Abbrechen",
     edit: "Bearbeiten",
     color: "Farbe",
+    confirm: "Ja",
+    fully_staffed: "Vollständig besetzt",
+    shifts_assigned: "Zugewiesene Schichten",
+    days: "Tage",
   },
 };
 

@@ -16,12 +16,13 @@ export default function RosterTab() {
     minTwoDaysOff, setMinTwoDaysOff,
     isExporting, setIsExporting,
     prevMonth, nextMonth, clearMonth,
-    getMemberShiftOnDate, getMonthlyStats,
+    getMemberShiftOnDate, getMonthlyStats, coverageAlerts,
     setEditingCell, setActiveTab,
   } = useRoster();
 
   const autoSchedule = useAutoScheduler();
   const [confirmClear, setConfirmClear] = useState(false);
+  const [showUnderstaffed, setShowUnderstaffed] = useState(true);
 
   const exportToPDF = async () => {
     setIsExporting(true);
@@ -58,6 +59,43 @@ export default function RosterTab() {
       pdfTitle.style.color = '#0f172a';
       pdfTitle.style.textTransform = 'capitalize';
       pdfTitle.style.fontFamily = 'system-ui, sans-serif';
+      // Build stats bar for PDF
+      const totalDays = daysArray.length;
+      const understaffedDays = Object.keys(coverageAlerts).length;
+      const fullyStaffedDays = totalDays - understaffedDays;
+      const totalShiftsAssigned = daysArray.reduce((sum, day) => {
+        const dk = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        return sum + shifts.reduce((s, sh) => s + (assignments[dk]?.[sh.id]?.length || 0), 0);
+      }, 0);
+
+      const pdfStats = document.createElement('div');
+      pdfStats.style.display = 'flex';
+      pdfStats.style.gap = '24px';
+      pdfStats.style.flexWrap = 'wrap';
+      pdfStats.style.fontSize = '11px';
+      pdfStats.style.marginBottom = '12px';
+      pdfStats.style.paddingBottom = '10px';
+      pdfStats.style.borderBottom = '1px solid #e2e8f0';
+      pdfStats.style.fontFamily = 'system-ui, sans-serif';
+      pdfStats.style.color = '#475569';
+
+      const statItems = [
+        { dot: '#34d399', label: `${t('fully_staffed')}:`, value: `${fullyStaffedDays} / ${totalDays} ${t('days')}`, color: '#059669' },
+        ...(understaffedDays > 0 ? [{ dot: '#fbbf24', label: `${t('understaffed')}:`, value: `${understaffedDays} ${t('days')}`, color: '#d97706' }] : []),
+        { dot: '#818cf8', label: `${t('shifts_assigned')}:`, value: `${totalShiftsAssigned}`, color: '#4338ca' },
+        { dot: '#94a3b8', label: `${t('team_members')}:`, value: `${members.length}`, color: '#334155' },
+      ];
+
+      statItems.forEach(item => {
+        const span = document.createElement('span');
+        span.style.display = 'flex';
+        span.style.alignItems = 'center';
+        span.style.gap = '5px';
+        span.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${item.dot};display:inline-block;flex-shrink:0"></span><span>${item.label}</span><strong style="color:${item.color}">${item.value}</strong>`;
+        pdfStats.appendChild(span);
+      });
+
+      clone.insertBefore(pdfStats, clone.firstChild);
       clone.insertBefore(pdfTitle, clone.firstChild);
 
       clone.classList.remove('flex', 'flex-col', 'flex-1', 'min-h-0', 'overflow-hidden');
@@ -81,12 +119,35 @@ export default function RosterTab() {
         tableEl.classList.remove('min-w-[768px]');
         tableEl.style.width = '100%';
         tableEl.style.height = 'auto';
+        // Switch to border-separate so cell backgrounds don't paint over borders
+        tableEl.style.borderCollapse = 'separate';
+        tableEl.style.borderSpacing = '0';
       }
 
-      // Force all table borders to black for readability
-      clone.querySelectorAll('table, table thead, table tbody, table tr, table td, table th').forEach(el => {
-        el.style.borderColor = 'black';
+      // Force consistent 1px solid black borders on every cell
+      clone.querySelectorAll('td, th').forEach(el => {
+        el.style.border = '1px solid black';
       });
+
+      // Force background colors for day headers (html2canvas doesn't always pick up Tailwind classes)
+      clone.querySelectorAll('th.bg-amber-100').forEach(el => {
+        el.style.backgroundColor = '#fef3c7';
+        el.style.color = '#92400e';
+      });
+      clone.querySelectorAll('th.bg-blue-100').forEach(el => {
+        el.style.backgroundColor = '#dbeafe';
+        el.style.color = '#1e3a8a';
+      });
+
+      // Force background colors for colored body cells
+      clone.querySelectorAll('td.bg-orange-50').forEach(el => { el.style.backgroundColor = '#fff7ed'; });
+      clone.querySelectorAll('td.bg-red-50').forEach(el => { el.style.backgroundColor = '#fef2f2'; });
+      clone.querySelectorAll('td.bg-pink-50').forEach(el => { el.style.backgroundColor = '#fdf2f8'; });
+      clone.querySelectorAll('td.bg-amber-50').forEach(el => { el.style.backgroundColor = '#fffbeb'; });
+      clone.querySelectorAll('td.bg-indigo-50').forEach(el => { el.style.backgroundColor = '#eef2ff'; });
+      clone.querySelectorAll('td.bg-teal-50').forEach(el => { el.style.backgroundColor = '#f0fdfa'; });
+      clone.querySelectorAll('td.bg-blue-50\\/60').forEach(el => { el.style.backgroundColor = '#eff6ff'; });
+      clone.querySelectorAll('td.bg-slate-100').forEach(el => { el.style.backgroundColor = '#f1f5f9'; });
 
       wrapper.appendChild(clone);
 
@@ -142,13 +203,13 @@ export default function RosterTab() {
                 onClick={() => { clearMonth(); setConfirmClear(false); }}
                 className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-2 py-0.5 rounded transition"
               >
-                {t('confirm') || 'Yes'}
+                {t('confirm')}
               </button>
               <button
                 onClick={() => setConfirmClear(false)}
                 className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 hover:bg-slate-50 px-2 py-0.5 rounded transition"
               >
-                {t('cancel') || 'Cancel'}
+                {t('cancel')}
               </button>
             </div>
           ) : (
@@ -158,6 +219,47 @@ export default function RosterTab() {
           )}
         </div>
       </div>
+
+      {/* Overview bar */}
+      {shifts.length > 0 && members.length > 0 && (() => {
+        const totalDays = daysArray.length;
+        const understaffedDays = Object.keys(coverageAlerts).length;
+        const fullyStaffedDays = totalDays - understaffedDays;
+        const totalShiftsAssigned = daysArray.reduce((sum, day) => {
+          const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          return sum + shifts.reduce((s, sh) => s + (assignments[dateKey]?.[sh.id]?.length || 0), 0);
+        }, 0);
+        return (
+          <div className="flex flex-wrap gap-4 px-4 sm:px-6 py-2.5 bg-white border-b border-slate-100 text-xs print:hidden">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+              <span className="text-slate-500">{t('fully_staffed')}:</span>
+              <span className="font-semibold text-emerald-600">{fullyStaffedDays} / {totalDays} {t('days')}</span>
+            </div>
+            {understaffedDays > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                <span className="text-slate-500">{t('understaffed')}:</span>
+                <span className="font-semibold text-amber-600">{understaffedDays} {t('days')}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+              <span className="text-slate-500">{t('shifts_assigned')}:</span>
+              <span className="font-semibold text-indigo-600">{totalShiftsAssigned}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+              <span className="text-slate-500">{t('team_members')}:</span>
+              <span className="font-semibold text-slate-700">{members.length}</span>
+            </div>
+            <label className="flex items-center gap-1.5 ml-auto cursor-pointer select-none">
+              <input type="checkbox" checked={showUnderstaffed} onChange={e => setShowUnderstaffed(e.target.checked)} className="rounded text-amber-600 focus:ring-amber-500" />
+              <span className="text-slate-500">Highlight understaffed</span>
+            </label>
+          </div>
+        );
+      })()}
 
       {shifts.length === 0 ? (
         <div className="p-12 text-center flex-1 flex flex-col items-center justify-center">
@@ -195,8 +297,11 @@ export default function RosterTab() {
                   {daysArray.map(day => {
                     const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
                     const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
+                    const dateKey = getDateKey(currentYear, currentMonth, day);
+                    const isUnderstaffed = showUnderstaffed && !!coverageAlerts[dateKey];
+                    const bg = isUnderstaffed ? 'bg-amber-100 text-amber-800' : isFriSat ? 'bg-blue-100 text-blue-900' : 'bg-slate-100 text-slate-700';
                     return (
-                      <th key={`day-${day}`} className={`p-0 h-6 sm:h-8 print:h-5 text-[10px] sm:text-sm print:text-[8px] font-bold border-b border-r border-slate-200 ${isFriSat ? 'bg-blue-100 text-blue-900' : 'bg-slate-100 text-slate-700'}`}>
+                      <th key={`day-${day}`} className={`p-0 h-6 sm:h-8 print:h-5 text-[10px] sm:text-sm print:text-[8px] font-bold border-b border-r border-slate-200 ${bg}`}>
                         {day}
                       </th>
                     );
@@ -207,8 +312,11 @@ export default function RosterTab() {
                     const dayOfWeekEn = getDayOfWeekShort(currentYear, currentMonth, day, 'en');
                     const dayOfWeekLocal = getDayOfWeekShortLocale(currentYear, currentMonth, day);
                     const isFriSat = dayOfWeekEn === 'Fri' || dayOfWeekEn === 'Sat';
+                    const dateKey = getDateKey(currentYear, currentMonth, day);
+                    const isUnderstaffed = showUnderstaffed && !!coverageAlerts[dateKey];
+                    const bg = isUnderstaffed ? 'bg-amber-100 text-amber-700' : isFriSat ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500';
                     return (
-                      <th key={`dow-${day}`} className={`p-0 h-4 sm:h-5 print:h-3 text-[8px] sm:text-[10px] print:text-[7px] font-medium border-r border-slate-200 uppercase ${isFriSat ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'}`}>
+                      <th key={`dow-${day}`} className={`p-0 h-4 sm:h-5 print:h-3 text-[8px] sm:text-[10px] print:text-[7px] font-medium border-r border-slate-200 uppercase ${bg}`}>
                         {dayOfWeekLocal}
                       </th>
                     );

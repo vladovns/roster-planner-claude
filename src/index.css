@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @media print {
+  /* Force black borders on roster table */
   #roster-content-to-print table td,
   #roster-content-to-print table th,
   #roster-content-to-print table thead,
@@ -11,5 +12,28 @@
     border-color: black !important;
     --tw-divide-opacity: 1 !important;
     --tw-divide-color: black !important;
+  }
+
+  /* Remove sticky positioning — causes overlap in print */
+  .sticky {
+    position: static !important;
+  }
+
+  /* Remove box shadows from sticky edges */
+  [class*="shadow-["] {
+    box-shadow: none !important;
+  }
+
+  /* Compact cell padding */
+  #roster-content-to-print table td,
+  #roster-content-to-print table th {
+    padding: 1px 3px !important;
+  }
+
+  /* Allow name column to expand */
+  #roster-content-to-print table td:first-child,
+  #roster-content-to-print table th:first-child {
+    max-width: none !important;
+    overflow: visible !important;
   }
 }

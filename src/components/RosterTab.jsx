@@ -26,6 +26,7 @@ export default function RosterTab() {
 
   const exportToPDF = async () => {
     setIsExporting(true);
+    let wrapper = null;
     try {
       if (!window.html2pdf) {
         await new Promise((resolve, reject) => {
@@ -38,27 +39,18 @@ export default function RosterTab() {
       }
 
       const element = document.getElementById('roster-content-to-print');
-      const wrapper = document.createElement('div');
-      wrapper.style.position = 'absolute';
-      wrapper.style.left = '-9999px';
-      wrapper.style.top = '-9999px';
-      wrapper.style.width = '1200px';
-      wrapper.style.display = 'block';
+      wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1200px;display:block';
       document.body.appendChild(wrapper);
 
       const clone = element.cloneNode(true);
 
-      const pdfTitle = document.createElement('h2');
+      // Add title
       const monthYear = currentDate.toLocaleString(langMap[language] || 'en-US', { month: 'long', year: 'numeric' });
+      const pdfTitle = document.createElement('h2');
       pdfTitle.innerText = `${t('monthly_roster')} - ${monthYear}`;
-      pdfTitle.style.fontSize = '24px';
-      pdfTitle.style.fontWeight = 'bold';
-      pdfTitle.style.marginBottom = '20px';
-      pdfTitle.style.paddingBottom = '10px';
-      pdfTitle.style.borderBottom = '2px solid #e2e8f0';
-      pdfTitle.style.color = '#0f172a';
-      pdfTitle.style.textTransform = 'capitalize';
-      pdfTitle.style.fontFamily = 'system-ui, sans-serif';
+      pdfTitle.style.cssText = 'font-size:20px;font-weight:bold;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;color:#0f172a;text-transform:capitalize;font-family:system-ui,sans-serif';
+
       // Build stats bar for PDF
       const totalDays = daysArray.length;
       const understaffedDays = Object.keys(coverageAlerts).length;
@@ -69,15 +61,7 @@ export default function RosterTab() {
       }, 0);
 
       const pdfStats = document.createElement('div');
-      pdfStats.style.display = 'flex';
-      pdfStats.style.gap = '24px';
-      pdfStats.style.flexWrap = 'wrap';
-      pdfStats.style.fontSize = '11px';
-      pdfStats.style.marginBottom = '12px';
-      pdfStats.style.paddingBottom = '10px';
-      pdfStats.style.borderBottom = '1px solid #e2e8f0';
-      pdfStats.style.fontFamily = 'system-ui, sans-serif';
-      pdfStats.style.color = '#475569';
+      pdfStats.style.cssText = 'display:flex;gap:24px;flex-wrap:wrap;font-size:11px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;font-family:system-ui,sans-serif;color:#475569';
 
       const statItems = [
         { dot: '#34d399', label: `${t('fully_staffed')}:`, value: `${fullyStaffedDays} / ${totalDays} ${t('days')}`, color: '#059669' },
@@ -88,9 +72,7 @@ export default function RosterTab() {
 
       statItems.forEach(item => {
         const span = document.createElement('span');
-        span.style.display = 'flex';
-        span.style.alignItems = 'center';
-        span.style.gap = '5px';
+        span.style.cssText = 'display:flex;align-items:center;gap:5px';
         span.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${item.dot};display:inline-block;flex-shrink:0"></span><span>${item.label}</span><strong style="color:${item.color}">${item.value}</strong>`;
         pdfStats.appendChild(span);
       });
@@ -98,31 +80,37 @@ export default function RosterTab() {
       clone.insertBefore(pdfStats, clone.firstChild);
       clone.insertBefore(pdfTitle, clone.firstChild);
 
+      // Reset layout classes on container
       clone.classList.remove('flex', 'flex-col', 'flex-1', 'min-h-0', 'overflow-hidden');
       clone.classList.add('block');
-      clone.style.overflow = 'visible';
-      clone.style.width = '100%';
-      clone.style.height = 'auto';
-      clone.style.backgroundColor = 'white';
-      clone.style.padding = '20px';
+      clone.style.cssText = 'overflow:visible;width:100%;height:auto;background:white;padding:12px';
 
-      const scrollableDiv = clone.querySelector('.overflow-x-auto');
-      if (scrollableDiv) {
-        scrollableDiv.classList.remove('flex-1');
-        scrollableDiv.style.overflow = 'visible';
-        scrollableDiv.style.width = '100%';
-        scrollableDiv.style.height = 'auto';
-      }
+      // Fix all scrollable containers
+      clone.querySelectorAll('.overflow-x-auto, .overflow-y-auto').forEach(el => {
+        el.classList.remove('flex-1');
+        el.style.overflow = 'visible';
+        el.style.width = '100%';
+        el.style.height = 'auto';
+      });
 
-      const tableEl = clone.querySelector('table');
-      if (tableEl) {
-        tableEl.classList.remove('min-w-[768px]');
-        tableEl.style.width = '100%';
-        tableEl.style.height = 'auto';
-        // Switch to border-separate so cell backgrounds don't paint over borders
-        tableEl.style.borderCollapse = 'separate';
-        tableEl.style.borderSpacing = '0';
-      }
+      // Fix all tables (roster + summary)
+      clone.querySelectorAll('table').forEach(tbl => {
+        tbl.classList.remove('min-w-[768px]', 'min-w-[600px]');
+        tbl.style.width = '100%';
+        tbl.style.height = 'auto';
+        tbl.style.borderCollapse = 'collapse';
+      });
+
+      // Remove sticky positioning (causes html2canvas overlap/misalignment)
+      clone.querySelectorAll('.sticky').forEach(el => {
+        el.classList.remove('sticky');
+        el.style.position = 'static';
+      });
+
+      // Remove box shadows from sticky column edges
+      clone.querySelectorAll('[class*="shadow-["]').forEach(el => {
+        el.style.boxShadow = 'none';
+      });
 
       // Force consistent 1px solid black borders on every cell
       clone.querySelectorAll('td, th').forEach(el => {
@@ -140,30 +128,37 @@ export default function RosterTab() {
       });
 
       // Force background colors for colored body cells
-      clone.querySelectorAll('td.bg-orange-50').forEach(el => { el.style.backgroundColor = '#fff7ed'; });
-      clone.querySelectorAll('td.bg-red-50').forEach(el => { el.style.backgroundColor = '#fef2f2'; });
-      clone.querySelectorAll('td.bg-pink-50').forEach(el => { el.style.backgroundColor = '#fdf2f8'; });
-      clone.querySelectorAll('td.bg-amber-50').forEach(el => { el.style.backgroundColor = '#fffbeb'; });
-      clone.querySelectorAll('td.bg-indigo-50').forEach(el => { el.style.backgroundColor = '#eef2ff'; });
-      clone.querySelectorAll('td.bg-teal-50').forEach(el => { el.style.backgroundColor = '#f0fdfa'; });
+      const bgMap = {
+        'td.bg-orange-50': '#fff7ed', 'td.bg-red-50': '#fef2f2',
+        'td.bg-pink-50': '#fdf2f8', 'td.bg-amber-50': '#fffbeb',
+        'td.bg-indigo-50': '#eef2ff', 'td.bg-teal-50': '#f0fdfa',
+        'td.bg-slate-100': '#f1f5f9',
+      };
+      Object.entries(bgMap).forEach(([sel, color]) => {
+        clone.querySelectorAll(sel).forEach(el => { el.style.backgroundColor = color; });
+      });
       clone.querySelectorAll('td.bg-blue-50\\/60').forEach(el => { el.style.backgroundColor = '#eff6ff'; });
-      clone.querySelectorAll('td.bg-slate-100').forEach(el => { el.style.backgroundColor = '#f1f5f9'; });
 
       wrapper.appendChild(clone);
 
+      const mm = String(currentMonth + 1).padStart(2, '0');
+      const filename = `${mm}.${currentYear}_Dienstplan.pdf`;
+
       const opt = {
-        margin: 0.2,
-        filename: `Team_Roster_${currentDate.toLocaleString(langMap[language] || 'en-US', { month: 'long', year: 'numeric' })}.pdf`,
+        margin: [0.15, 0.15, 0.15, 0.15],
+        filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
       };
 
       await window.html2pdf().set(opt).from(clone).save();
-      document.body.removeChild(wrapper);
     } catch (error) {
       console.error("PDF Export failed:", error);
     } finally {
+      if (wrapper && wrapper.parentNode) {
+        document.body.removeChild(wrapper);
+      }
       setIsExporting(false);
     }
   };

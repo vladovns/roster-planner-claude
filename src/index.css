@@ -3,105 +3,37 @@
 @tailwind utilities;
 
 @media print {
-  /* ── Global print resets ── */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+  /* Force black borders on roster table */
+  #roster-content-to-print table td,
+  #roster-content-to-print table th,
+  #roster-content-to-print table thead,
+  #roster-content-to-print table tbody,
+  #roster-content-to-print table tr {
+    border-color: black !important;
+    --tw-divide-opacity: 1 !important;
+    --tw-divide-color: black !important;
   }
 
-  body {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: white !important;
-  }
-
-  /* ── Layout: remove sticky, shadows, overflow ── */
+  /* Remove sticky positioning — causes overlap in print */
   .sticky {
     position: static !important;
   }
 
-  [class*="shadow-["],
-  .shadow-sm,
-  .shadow-md {
+  /* Remove box shadows from sticky edges */
+  [class*="shadow-["] {
     box-shadow: none !important;
   }
 
-  .overflow-x-auto,
-  .overflow-y-auto,
-  .overflow-hidden {
-    overflow: visible !important;
-  }
-
-  /* ── Roster table borders ── */
-  #roster-content-to-print table {
-    border-collapse: collapse !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-  }
-
+  /* Compact cell padding */
   #roster-content-to-print table td,
   #roster-content-to-print table th {
-    border: 1px solid #333 !important;
-    padding: 1px 2px !important;
+    padding: 1px 3px !important;
   }
 
-  /* ── Name column: expand fully, no truncation ── */
+  /* Allow name column to expand */
   #roster-content-to-print table td:first-child,
   #roster-content-to-print table th:first-child {
     max-width: none !important;
     overflow: visible !important;
-    white-space: nowrap !important;
-    width: auto !important;
-  }
-
-  #roster-content-to-print table td:first-child div {
-    max-width: none !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-  }
-
-  /* ── Force Tailwind background colors on header cells ── */
-  th.bg-amber-100 {
-    background-color: #fef3c7 !important;
-    color: #92400e !important;
-  }
-  th.bg-blue-100 {
-    background-color: #dbeafe !important;
-    color: #1e3a8a !important;
-  }
-  th.bg-slate-100 {
-    background-color: #f1f5f9 !important;
-  }
-
-  /* ── Force Tailwind background colors on body cells ── */
-  td.bg-orange-50 { background-color: #fff7ed !important; }
-  td.bg-red-50    { background-color: #fef2f2 !important; }
-  td.bg-pink-50   { background-color: #fdf2f8 !important; }
-  td.bg-amber-50  { background-color: #fffbeb !important; }
-  td.bg-indigo-50 { background-color: #eef2ff !important; }
-  td.bg-teal-50   { background-color: #f0fdfa !important; }
-  td.bg-slate-100 { background-color: #f1f5f9 !important; }
-
-  /* Tailwind class with opacity modifier needs escaped selector */
-  td[class*="bg-blue-50"] {
-    background-color: #eff6ff !important;
-  }
-
-  /* Alternating row bg */
-  tr.bg-white { background-color: white !important; }
-  tr[class*="bg-slate-50"] { background-color: #f8fafc !important; }
-
-  /* ── Summary table ── */
-  #roster-content-to-print .border-t {
-    border-top: 2px solid #333 !important;
-    margin-top: 8px !important;
-    page-break-inside: avoid !important;
-  }
-
-  /* ── Page setup ── */
-  @page {
-    size: A4 landscape;
-    margin: 8mm;
   }
 }

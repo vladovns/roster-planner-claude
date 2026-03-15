@@ -225,7 +225,7 @@ export default function RosterTab() {
           return sum + shifts.reduce((s, sh) => s + (assignments[dateKey]?.[sh.id]?.length || 0), 0);
         }, 0);
         return (
-          <div className="flex flex-wrap gap-4 px-4 sm:px-6 py-2.5 bg-white border-b border-slate-100 text-xs print:hidden">
+          <div className="flex flex-wrap gap-4 px-4 sm:px-6 py-2.5 bg-white border-b border-slate-100 text-xs print:text-[9px] print:py-1 print:px-0 print:gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
               <span className="text-slate-500">{t('fully_staffed')}:</span>
@@ -248,7 +248,7 @@ export default function RosterTab() {
               <span className="text-slate-500">{t('team_members')}:</span>
               <span className="font-semibold text-slate-700">{members.length}</span>
             </div>
-            <label className="flex items-center gap-1.5 ml-auto cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 ml-auto cursor-pointer select-none print:hidden">
               <input type="checkbox" checked={showUnderstaffed} onChange={e => setShowUnderstaffed(e.target.checked)} className="rounded text-amber-600 focus:ring-amber-500" />
               <span className="text-slate-500">{t('highlight_understaffed')}</span>
             </label>

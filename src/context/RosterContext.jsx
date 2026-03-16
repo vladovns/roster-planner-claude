@@ -44,6 +44,9 @@ export function RosterProvider({ children }) {
   const [editingShift, setEditingShift] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
 
+  // --- MONTHLY NOTES ---
+  const [monthlyNotes, setMonthlyNotes] = useState({});
+
   // --- CUSTOM EVENTS ---
   const [events, setEvents] = useState([]);
 
@@ -60,6 +63,7 @@ export function RosterProvider({ children }) {
         if (data.timeOff) setTimeOff(data.timeOff);
         if (data.minTwoDaysOff !== undefined) setMinTwoDaysOff(data.minTwoDaysOff);
         if (data.events) setEvents(data.events);
+        if (data.monthlyNotes) setMonthlyNotes(data.monthlyNotes);
       }
     } catch (e) {
       console.error("Local Load Error", e);
@@ -68,14 +72,14 @@ export function RosterProvider({ children }) {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      localStorage.setItem('teamRosterData', JSON.stringify({ roles, members, shifts, assignments, timeOff, minTwoDaysOff, events }));
+      localStorage.setItem('teamRosterData', JSON.stringify({ roles, members, shifts, assignments, timeOff, minTwoDaysOff, events, monthlyNotes }));
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff, events]);
+  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff, events, monthlyNotes]);
 
   // --- MANUAL BACKUP ---
   const downloadBackup = useCallback(() => {
-    const data = { roles, members, shifts, assignments, timeOff, minTwoDaysOff, events };
+    const data = { roles, members, shifts, assignments, timeOff, minTwoDaysOff, events, monthlyNotes };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -85,7 +89,7 @@ export function RosterProvider({ children }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff, events]);
+  }, [roles, members, shifts, assignments, timeOff, minTwoDaysOff, events, monthlyNotes]);
 
   const uploadBackup = useCallback((e) => {
     const file = e.target.files[0];
@@ -101,6 +105,7 @@ export function RosterProvider({ children }) {
         if (data.timeOff) setTimeOff(data.timeOff);
         if (data.minTwoDaysOff !== undefined) setMinTwoDaysOff(data.minTwoDaysOff);
         if (data.events) setEvents(data.events);
+        if (data.monthlyNotes) setMonthlyNotes(data.monthlyNotes);
       } catch (err) {
         console.error("Invalid backup file");
       }
@@ -521,6 +526,7 @@ export function RosterProvider({ children }) {
     assignments, setAssignments,
     timeOff, setTimeOff, timeOffError, setTimeOffError, addTimeOff, removeTimeOffEntry, removeTimeOffBlock,
     events, setEvents, addEvent, updateEvent, removeEvent,
+    monthlyNotes, setMonthlyNotes,
     editingCell, setEditingCell,
     isExporting, setIsExporting,
     newShiftColor, setNewShiftColor,

@@ -10,7 +10,7 @@ import { langMap } from '../utils/translations';
 export default function RosterTab() {
   const {
     t, language, getDayOfWeekShortLocale,
-    members, shifts, roles, timeOff, events,
+    members, shifts, roles, timeOff, events, monthlyNotes, setMonthlyNotes,
     currentDate, currentYear, currentMonth, daysArray,
     assignments, setAssignments,
     minTwoDaysOff, setMinTwoDaysOff,
@@ -139,6 +139,10 @@ export default function RosterTab() {
       });
       clone.querySelectorAll('td.bg-blue-50\\/60').forEach(el => { el.style.backgroundColor = '#eff6ff'; });
 
+      // Handle monthly notes: hide textarea, show plain text
+      clone.querySelectorAll('textarea').forEach(el => { el.style.display = 'none'; });
+      clone.querySelectorAll('.print\\:block').forEach(el => { el.style.display = 'block'; });
+
       wrapper.appendChild(clone);
 
       const mm = String(currentMonth + 1).padStart(2, '0');
@@ -164,7 +168,7 @@ export default function RosterTab() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-140px)] print:block print:h-auto print:overflow-visible print:border-none print:shadow-none">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[400px] print:block print:h-auto print:overflow-visible print:border-none print:shadow-none">
       {/* Toolbar */}
       <div className="p-4 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 print:bg-white print:border-none print:p-0 print:mb-4">
         <div className="flex items-center gap-4">
@@ -282,7 +286,7 @@ export default function RosterTab() {
             ))}
           </div>
 
-          <div className="overflow-x-auto flex-1 print:flex-none print:h-auto print:overflow-visible no-scrollbar">
+          <div className="overflow-x-auto print:flex-none print:h-auto print:overflow-visible no-scrollbar">
             <table className="w-full min-w-[768px] print:min-w-0 table-fixed divide-y divide-slate-200 border-collapse text-center">
               <thead className="bg-slate-100 sticky top-0 z-20 shadow-sm">
                 <tr>
@@ -458,6 +462,27 @@ export default function RosterTab() {
               </div>
             )}
           </div>
+
+          {/* Monthly Notes */}
+          {(() => {
+            const noteKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+            const noteValue = monthlyNotes[noteKey] || '';
+            return (
+              <div className="border-t border-slate-200 bg-white px-4 py-2 shrink-0 print:break-inside-avoid print:border-none print:mt-4 print:p-0">
+                <div className="text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">{t('month_notes')}</div>
+                <textarea
+                  className="w-full text-xs text-slate-700 border border-slate-200 rounded px-2 py-1.5 resize-y min-h-[48px] focus:outline-none focus:ring-1 focus:ring-indigo-300 print:hidden"
+                  placeholder={t('month_notes_placeholder')}
+                  value={noteValue}
+                  onChange={(e) => setMonthlyNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
+                  rows={2}
+                />
+                {noteValue && (
+                  <div className="hidden print:block text-[9px] text-slate-700 whitespace-pre-wrap">{noteValue}</div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

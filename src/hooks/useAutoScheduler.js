@@ -168,18 +168,8 @@ export function useAutoScheduler() {
       }
     });
 
-    // Accumulate already published shifts as a contract-relative workload baseline.
-    for (let d = 1; d <= daysCount; d++) {
-      const dk = getDateKey(currentYear, currentMonth, d);
-      Object.entries(assignments[dk] || {}).forEach(([shiftId, memberIds]) => {
-        const shift = shifts.find(s => s.id === shiftId);
-        if (!shift || !Array.isArray(memberIds)) return;
-        memberIds.forEach(memberId => {
-          const member = members.find(m => m.id === memberId);
-          if (member) contractAdjustedHours[memberId] += calculateShiftDuration(shift.time) / ((Number(member.employmentPercentage) >= 1 && Number(member.employmentPercentage) <= 100 ? Number(member.employmentPercentage) : 100) / 100);
-        });
-      });
-    }
+    // This scheduler rebuilds the whole month. Start workload counters at zero;
+    // counting existing assignments here would double-count the previous rota.
 
     for (let d = 1; d <= daysCount; d++) {
       const dateObj = new Date(currentYear, currentMonth, d);
@@ -330,8 +320,11 @@ export function useAutoScheduler() {
             // Workload balance: compare net shift hours relative to contract percentage.
             // Lower contract-adjusted hours receive preference; this is a soft balance
             // factor and never removes required shift coverage or role restrictions.
-            score += (contractAdjustedHours[m.id] || 0) * 3;
-            score += (daysWorkedThisMonth[m.id] || 0) * 4;
+            // Weight workload in full-time-equivalent hours so part-time staff
+            // reach a proportionately lower actual-hours total. This should take
+            // priority over stretch-shift preferences when the rota is tight.
+            score += (contractAdjustedHours[m.id] || 0) * 20;
+            score += ((daysWorkedThisMonth[m.id] || 0) / getEmploymentFraction(m)) * 15;
 
             // maxDaysOff pressure: strongly prefer members who are at risk of
             // exceeding their max days off limit. The tighter the budget, the
@@ -494,7 +487,15 @@ export function useAutoScheduler() {
             // guaranteed days off), force a work assignment.
             const projectedDaysOff = daysOffSoFar + 1 + futureGuaranteedOff; // +1 = today off
             if (projectedDaysOff > maxOff) {
-              let eligibleShifts = activeShifts.filter(shift => isEligibleForShift(m, shift, d));
+              // Only force a shift when it fills a real staffing gap. Do not
+              // overstaff a shift just to satisfy an individual days-off target.
+              let eligibleShifts = activeShifts.filter(shift => {
+                const target = shift.requirements?.[dayOfWeekNum] !== undefined
+                  ? shift.requirements[dayOfWeekNum]
+                  : 1;
+                const assigned = newAssignments[dateKey][shift.id]?.length || 0;
+                return assigned < target && isEligibleForShift(m, shift, d);
+              });
 
               if (eligibleShifts.length > 0) {
                 eligibleShifts.sort((a, b) => {

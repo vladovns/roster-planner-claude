@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, UserPlus, Trash2, Pencil, ShieldCheck, Calendar, Gift, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, UserPlus, Trash2, Pencil, ShieldCheck, Calendar, Gift, ChevronUp, ChevronDown, Clock } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
 import { formatDateDDMMYYYY } from '../utils/helpers';
 
@@ -27,6 +27,10 @@ export default function TeamTab() {
             {roles.length === 0 ? <option value="">{t('add_roles_first')}</option> : null}
             {roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
           </select>
+          <div className="flex flex-col flex-1 min-w-[140px] gap-1">
+            <label htmlFor="new-employment-percentage" className="text-xs font-medium text-slate-600">{t('employment_percentage')}</label>
+            <input id="new-employment-percentage" type="number" name="employmentPercentage" defaultValue="100" min="1" max="100" step="1" required aria-label={t('employment_percentage')} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
+          </div>
           <input type="number" name="maxDaysOff" placeholder={t('max_days_off')} title={t('max_days_off')} min="0" max="31" className="flex-1 min-w-[110px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
           <select name="allocationOption" title={t('allocation_option')} className="flex-1 min-w-[160px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white text-slate-700">
             <option value="">{t('allocation_none')}</option>
@@ -55,6 +59,7 @@ export default function TeamTab() {
                   <span className="font-medium px-2 py-0.5 bg-slate-100 rounded-md flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-slate-400" /> {member.role}
                   </span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-indigo-400" /> {t('employment_percentage_short')}: {Number.isFinite(Number(member.employmentPercentage)) && Number(member.employmentPercentage) >= 1 && Number(member.employmentPercentage) <= 100 ? Number(member.employmentPercentage) : 100}%</span>
                   {member.allocationOption ? <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md">{member.allocationOption === '1' ? t('allocation_option_1') : t('allocation_option_2')}</span> : null}
                   {member.maxDaysOff ? <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-emerald-500" /> {member.maxDaysOff} {t('max_days_off')}</span> : null}
                   {member.birthday ? <span className="flex items-center gap-1"><Gift className="w-3 h-3 text-indigo-400" /> {formatDateDDMMYYYY(member.birthday)}</span> : null}

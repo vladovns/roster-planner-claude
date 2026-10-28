@@ -30,6 +30,7 @@ export function useAutoScheduler() {
     let mandatoryRestReason = {}; // '5day' = from 5-consecutive rule, 'twoDayOff' = from min-2-days-off rule
     let currentStretchShift = {};
     let daysWorkedThisMonth = {};
+    let contractAdjustedHours = {};
 
     // Pre-calculate guaranteed days off per member (time off + birthdays + fixed days off)
     // so maxDaysOff logic can plan ahead. Wish days count as days off.
@@ -127,6 +128,7 @@ export function useAutoScheduler() {
       consecutiveDays[m.id] = streak;
       currentStretchShift[m.id] = lastShiftId;
       daysWorkedThisMonth[m.id] = 0;
+      contractAdjustedHours[m.id] = 0;
 
       if (streak >= 5) {
         mandatoryDaysOff[m.id] = minTwoDaysOff ? 2 : 1;
@@ -137,6 +139,19 @@ export function useAutoScheduler() {
         mandatoryRestReason[m.id] = null;
       }
     });
+
+    // Accumulate already published shifts as a contract-relative workload baseline.
+    for (let d = 1; d <= daysCount; d++) {
+      const dk = getDateKey(currentYear, currentMonth, d);
+      Object.entries(assignments[dk] || {}).forEach(([shiftId, memberIds]) => {
+        const shift = shifts.find(s => s.id === shiftId);
+        if (!shift || !Array.isArray(memberIds)) return;
+        memberIds.forEach(memberId => {
+          const member = members.find(m => m.id === memberId);
+          if (member) contractAdjustedHours[memberId] += calculateShiftDuration(shift.time) / ((Number(member.employmentPercentage) >= 1 && Number(member.employmentPercentage) <= 100 ? Number(member.employmentPercentage) : 100) / 100);
+        });
+      });
+    }
 
     for (let d = 1; d <= daysCount; d++) {
       const dateObj = new Date(currentYear, currentMonth, d);
@@ -284,9 +299,11 @@ export function useAutoScheduler() {
               }
             }
 
-            // Workload balance: prefer members who have worked fewer days
-            // this month to distribute shifts more evenly across the team
-            score += (daysWorkedThisMonth[m.id] || 0) * 8;
+            // Workload balance: compare net shift hours relative to contract percentage.
+            // Lower contract-adjusted hours receive preference; this is a soft balance
+            // factor and never removes required shift coverage or role restrictions.
+            score += (contractAdjustedHours[m.id] || 0) * 3;
+            score += (daysWorkedThisMonth[m.id] || 0) * 4;
 
             // maxDaysOff pressure: strongly prefer members who are at risk of
             // exceeding their max days off limit. The tighter the budget, the
@@ -295,7 +312,7 @@ export function useAutoScheduler() {
               const maxOff = parseInt(m.maxDaysOff, 10);
               if (!isNaN(maxOff)) {
                 const worked = daysWorkedThisMonth[m.id] || 0;
-                const minWorkDays = daysCount - maxOff;
+                const minWorkDays = Math.ceil((daysCount - maxOff) * ((Number(m.employmentPercentage) >= 1 && Number(m.employmentPercentage) <= 100) ? Number(m.employmentPercentage) / 100 : 1));
                 const remainingDays = daysCount - d + 1;
                 const daysLeftToWork = minWorkDays - worked;
                 // offBudget: how many rest days the member can still "afford"
@@ -391,6 +408,9 @@ export function useAutoScheduler() {
 
           const chosen = scoredCandidates[0].member;
           newAssignments[dateKey][shift.id].push(chosen.id);
+          const chosenMember = members.find(m => m.id === chosen.id);
+          const chosenFte = chosenMember && Number(chosenMember.employmentPercentage) >= 1 && Number(chosenMember.employmentPercentage) <= 100 ? Number(chosenMember.employmentPercentage) / 100 : 1;
+          contractAdjustedHours[chosen.id] = (contractAdjustedHours[chosen.id] || 0) + calculateShiftDuration(shift.time) / chosenFte;
           workedToday.add(chosen.id);
           assignedShiftToday[chosen.id] = shift.id;
           shiftAvailable = shiftAvailable.filter(m => m.id !== chosen.id);
@@ -461,6 +481,8 @@ export function useAutoScheduler() {
                 const chosenShift = eligibleShifts[0];
                 if (!newAssignments[dateKey][chosenShift.id]) newAssignments[dateKey][chosenShift.id] = [];
                 newAssignments[dateKey][chosenShift.id].push(m.id);
+                const forcedFte = Number(m.employmentPercentage) >= 1 && Number(m.employmentPercentage) <= 100 ? Number(m.employmentPercentage) / 100 : 1;
+                contractAdjustedHours[m.id] = (contractAdjustedHours[m.id] || 0) + calculateShiftDuration(chosenShift.time) / forcedFte;
                 workedToday.add(m.id);
                 assignedShiftToday[m.id] = chosenShift.id;
               }

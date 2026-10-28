@@ -8,6 +8,15 @@ import {
 
 const RosterContext = createContext(null);
 
+function readEmploymentPercentage(formData) {
+  const choice = formData.get('employmentPercentageChoice');
+  const rawValue = choice === 'custom'
+    ? formData.get('employmentPercentageCustom')
+    : (choice ?? formData.get('employmentPercentage'));
+  const parsed = Number.parseInt(rawValue, 10);
+  return Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 100;
+}
+
 export function useRoster() {
   const ctx = useContext(RosterContext);
   if (!ctx) throw new Error('useRoster must be used within RosterProvider');
@@ -170,10 +179,7 @@ export function RosterProvider({ children }) {
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
     const allocationOption = formData.get('allocationOption') || '';
-    const rawEmploymentPercentage = Number.parseInt(formData.get('employmentPercentage'), 10);
-    const employmentPercentage = Number.isFinite(rawEmploymentPercentage)
-      ? Math.min(100, Math.max(1, rawEmploymentPercentage))
-      : 100;
+    const employmentPercentage = readEmploymentPercentage(formData);
 
     setMembers(prev => {
       const color = MEMBER_COLORS[prev.length % MEMBER_COLORS.length];
@@ -221,10 +227,7 @@ export function RosterProvider({ children }) {
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
     const allocationOption = formData.get('allocationOption') || '';
-    const rawEmploymentPercentage = Number.parseInt(formData.get('employmentPercentage'), 10);
-    const employmentPercentage = Number.isFinite(rawEmploymentPercentage)
-      ? Math.min(100, Math.max(1, rawEmploymentPercentage))
-      : 100;
+    const employmentPercentage = readEmploymentPercentage(formData);
 
     setEditingMember(prev => {
       if (!prev) return null;

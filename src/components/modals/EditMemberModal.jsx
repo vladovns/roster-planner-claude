@@ -34,6 +34,13 @@ export default function EditMemberModal() {
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t('employment_percentage')}</label>
+              <div className="flex items-center gap-2">
+                <input type="number" name="employmentPercentage" defaultValue={Number.isFinite(Number(editingMember.employmentPercentage)) && Number(editingMember.employmentPercentage) >= 1 && Number(editingMember.employmentPercentage) <= 100 ? Number(editingMember.employmentPercentage) : 100} min="1" max="100" step="1" required className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
+                <span className="text-sm text-slate-500">%</span>
+              </div>
+            </div>
+            <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 mb-1">{t('birthday')}</label>
               <input type="date" name="birthday" defaultValue={editingMember.birthday} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-500" />
             </div>

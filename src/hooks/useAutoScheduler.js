@@ -15,6 +15,34 @@ function getShiftStartHour(timeStr) {
   return h + (isNaN(m) ? 0 : m / 60);
 }
 
+/** Returns the member's employment fraction, defaulting legacy records to 100%. */
+function getEmploymentFraction(member) {
+  const percentage = Number(member?.employmentPercentage);
+  return Number.isFinite(percentage) && percentage >= 1 && percentage <= 100
+    ? percentage / 100
+    : 1;
+}
+
+/**
+ * Scales the full-time work-day target implied by maxDaysOff to the member's
+ * contract. The setting remains a full-time baseline; part-time members receive
+ * a proportionally smaller work-day target.
+ */
+function getEffectiveMaxDaysOff(member, daysCount) {
+  if (
+    member?.maxDaysOff === null ||
+    member?.maxDaysOff === undefined ||
+    String(member.maxDaysOff).trim() === ''
+  ) return null;
+
+  const maxDaysOff = Number.parseInt(member.maxDaysOff, 10);
+  if (!Number.isFinite(maxDaysOff)) return null;
+
+  const fullTimeRequiredWorkDays = Math.max(0, daysCount - maxDaysOff);
+  const contractRequiredWorkDays = Math.ceil(fullTimeRequiredWorkDays * getEmploymentFraction(member));
+  return Math.max(0, daysCount - contractRequiredWorkDays);
+}
+
 export function useAutoScheduler() {
   const {
     members, shifts, roles, assignments, setAssignments,
@@ -308,17 +336,15 @@ export function useAutoScheduler() {
             // maxDaysOff pressure: strongly prefer members who are at risk of
             // exceeding their max days off limit. The tighter the budget, the
             // stronger the pull toward working today.
-            if (m.maxDaysOff) {
-              const maxOff = parseInt(m.maxDaysOff, 10);
-              if (!isNaN(maxOff)) {
-                const worked = daysWorkedThisMonth[m.id] || 0;
-                const minWorkDays = Math.ceil((daysCount - maxOff) * ((Number(m.employmentPercentage) >= 1 && Number(m.employmentPercentage) <= 100) ? Number(m.employmentPercentage) / 100 : 1));
-                const remainingDays = daysCount - d + 1;
-                const daysLeftToWork = minWorkDays - worked;
-                // offBudget: how many rest days the member can still "afford"
-                const offBudget = remainingDays - daysLeftToWork;
-                if (offBudget <= 3) score -= (4 - offBudget) * 150; // tight → strong pull
-              }
+            const effectiveMaxOff = getEffectiveMaxDaysOff(m, daysCount);
+            if (effectiveMaxOff !== null) {
+              const worked = daysWorkedThisMonth[m.id] || 0;
+              const minWorkDays = daysCount - effectiveMaxOff;
+              const remainingDays = daysCount - d + 1;
+              const daysLeftToWork = minWorkDays - worked;
+              // offBudget: how many rest days the member can still "afford"
+              const offBudget = remainingDays - daysLeftToWork;
+              if (offBudget <= 3) score -= (4 - offBudget) * 150; // tight → strong pull
             }
 
             const isNewStretch = (consecutiveDays[m.id] || 0) === 0;
@@ -446,9 +472,9 @@ export function useAutoScheduler() {
       // Count wish days, holidays, sick days, birthdays, and fixed days off
       // toward the days-off budget. Force work when remaining days are tight.
       available.forEach(m => {
-        if (!workedToday.has(m.id) && m.maxDaysOff) {
-          const maxOff = parseInt(m.maxDaysOff, 10);
-          if (!isNaN(maxOff)) {
+        if (!workedToday.has(m.id)) {
+          const maxOff = getEffectiveMaxDaysOff(m, daysCount);
+          if (maxOff !== null) {
             const worked = daysWorkedThisMonth[m.id] || 0;
             // Days already off this month (not worked, not today)
             const daysElapsed = d - 1;

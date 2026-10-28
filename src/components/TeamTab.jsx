@@ -3,6 +3,9 @@ import { Users, UserPlus, Trash2, Pencil, ShieldCheck, Calendar, Gift, ChevronUp
 import { useRoster } from '../context/RosterContext';
 import { formatDateDDMMYYYY } from '../utils/helpers';
 
+const fieldClass = "h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100";
+const labelClass = "text-xs font-semibold tracking-wide text-slate-600";
+
 export default function TeamTab() {
   const {
     t, roles, members,
@@ -20,42 +23,68 @@ export default function TeamTab() {
         <Users className="w-8 h-8 text-indigo-100" />
       </div>
 
-      <div className="p-6 bg-slate-50">
-        <form onSubmit={addMember} className="flex flex-col lg:flex-row flex-wrap gap-3">
-          <input type="text" name="name" placeholder={t('full_name')} required className="flex-[2] min-w-[200px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-900" />
-          <select name="role" required className="flex-1 min-w-[130px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white">
-            {roles.length === 0 ? <option value="">{t('add_roles_first')}</option> : null}
-            {roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-          </select>
-          <div className="flex flex-col flex-1 min-w-[140px] gap-1">
-            <label htmlFor="new-employment-percentage" className="text-xs font-medium text-slate-600">{t('employment_percentage')}</label>
-            <input id="new-employment-percentage" type="number" name="employmentPercentage" defaultValue="100" min="1" max="100" step="1" required aria-label={t('employment_percentage')} className="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
+      <div className="p-6 bg-slate-50 border-b border-slate-200">
+        <form onSubmit={addMember} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <label htmlFor="new-member-name" className={labelClass}>{t('full_name')}</label>
+            <input id="new-member-name" type="text" name="name" placeholder={t('full_name')} required className={fieldClass + " text-slate-900"} />
           </div>
-          <input type="number" name="maxDaysOff" placeholder={t('max_days_off')} title={t('max_days_off')} min="0" max="31" className="flex-1 min-w-[110px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-700" />
-          <select name="allocationOption" title={t('allocation_option')} className="flex-1 min-w-[160px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white text-slate-700">
-            <option value="">{t('allocation_none')}</option>
-            <option value="1" title={t('allocation_option_1_hint')}>{t('allocation_option_1')}</option>
-            <option value="2" title={t('allocation_option_2_hint')}>{t('allocation_option_2')}</option>
-          </select>
-          <input type="date" name="birthday" title={t('birthday')} className="flex-1 min-w-[140px] rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border text-slate-500" />
-          <button type="submit" disabled={roles.length === 0} className="flex-none whitespace-nowrap bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition flex items-center justify-center gap-2 font-medium text-sm">
-            <UserPlus className="w-4 h-4 shrink-0" /> {t('add')}
-          </button>
+
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <label htmlFor="new-member-role" className={labelClass}>{t('role')}</label>
+            <select id="new-member-role" name="role" required className={fieldClass} disabled={roles.length === 0}>
+              {roles.length === 0 ? <option value="">{t('add_roles_first')}</option> : null}
+              {roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+            </select>
+          </div>
+
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <label htmlFor="new-employment-percentage" className={labelClass}>{t('employment_percentage')}</label>
+            <div className="flex h-10 w-full min-w-0 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
+              <input id="new-employment-percentage" type="number" name="employmentPercentage" defaultValue="100" min="1" max="100" step="1" required aria-label={t('employment_percentage')} className="h-full w-full min-w-0 border-0 bg-transparent px-3 text-sm text-slate-700 focus:outline-none focus:ring-0" />
+              <span className="flex items-center border-l border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">%</span>
+            </div>
+          </div>
+
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <label htmlFor="new-member-max-days-off" className={labelClass}>{t('max_days_off')}</label>
+            <input id="new-member-max-days-off" type="number" name="maxDaysOff" min="0" max="31" placeholder="—" className={fieldClass} />
+          </div>
+
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <label htmlFor="new-member-allocation" className={labelClass}>{t('allocation_option')}</label>
+            <select id="new-member-allocation" name="allocationOption" className={fieldClass}>
+              <option value="">{t('allocation_none')}</option>
+              <option value="1" title={t('allocation_option_1_hint')}>{t('allocation_option_1')}</option>
+              <option value="2" title={t('allocation_option_2_hint')}>{t('allocation_option_2')}</option>
+            </select>
+          </div>
+
+          <div className="min-w-0 flex flex-col gap-1.5">
+            <label htmlFor="new-member-birthday" className={labelClass}>{t('birthday')}</label>
+            <input id="new-member-birthday" type="date" name="birthday" className={fieldClass} />
+          </div>
+
+          <div className="sm:col-span-2 lg:col-span-3 flex justify-end pt-1">
+            <button type="submit" disabled={roles.length === 0} className="h-10 w-full sm:w-auto min-w-36 whitespace-nowrap rounded-lg bg-indigo-600 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2">
+              <UserPlus className="w-4 h-4 shrink-0" /> {t('add')}
+            </button>
+          </div>
         </form>
       </div>
 
       <ul className="divide-y divide-slate-200">
         {members.length === 0 ? (
-          <li className="p-6 text-center text-slate-500">{t('no_team_members')}</li>
+          <li className="p-6 text-center text-sm text-slate-500">{t('no_team_members')}</li>
         ) : members.map((member, index) => (
-          <li key={member.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors group">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${member.color}`}>
+          <li key={member.id} className="p-4 sm:px-6 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors group">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${member.color}`}>
                 {member.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
               </div>
-              <div>
-                <p className="text-sm font-medium text-slate-900">{member.name}</p>
-                <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3 mt-0.5">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-900 break-words">{member.name}</p>
+                <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                   <span className="font-medium px-2 py-0.5 bg-slate-100 rounded-md flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-slate-400" /> {member.role}
                   </span>
@@ -66,13 +95,13 @@ export default function TeamTab() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="flex flex-col mr-2 ml-2 border-l border-slate-200 pl-2">
-                <button onClick={() => moveMemberUp(index)} disabled={index === 0} className="text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 p-1 transition"><ChevronUp className="w-4 h-4" /></button>
-                <button onClick={() => moveMemberDown(index)} disabled={index === members.length - 1} className="text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 p-1 transition"><ChevronDown className="w-4 h-4" /></button>
+            <div className="flex shrink-0 items-center gap-1">
+              <div className="flex flex-col mr-1 ml-1 border-l border-slate-200 pl-2">
+                <button type="button" onClick={() => moveMemberUp(index)} disabled={index === 0} aria-label={`Move ${member.name} up`} className="text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 p-1 transition"><ChevronUp className="w-4 h-4" /></button>
+                <button type="button" onClick={() => moveMemberDown(index)} disabled={index === members.length - 1} aria-label={`Move ${member.name} down`} className="text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 p-1 transition"><ChevronDown className="w-4 h-4" /></button>
               </div>
-              <button onClick={() => setEditingMember(member)} className="text-slate-400 hover:text-blue-500 p-2 rounded-full hover:bg-blue-50 transition"><Pencil className="w-5 h-5" /></button>
-              <button onClick={() => removeMember(member.id)} className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition"><Trash2 className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setEditingMember(member)} aria-label={`Edit ${member.name}`} className="text-slate-400 hover:text-blue-500 p-2 rounded-full hover:bg-blue-50 transition"><Pencil className="w-5 h-5" /></button>
+              <button type="button" onClick={() => removeMember(member.id)} aria-label={`Remove ${member.name}`} className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition"><Trash2 className="w-5 h-5" /></button>
             </div>
           </li>
         ))}

@@ -170,10 +170,14 @@ export function RosterProvider({ children }) {
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
     const allocationOption = formData.get('allocationOption') || '';
+    const rawEmploymentPercentage = Number.parseInt(formData.get('employmentPercentage'), 10);
+    const employmentPercentage = Number.isFinite(rawEmploymentPercentage)
+      ? Math.min(100, Math.max(1, rawEmploymentPercentage))
+      : 100;
 
     setMembers(prev => {
       const color = MEMBER_COLORS[prev.length % MEMBER_COLORS.length];
-      return [...prev, { id: generateId(), name, role, color, birthday, maxDaysOff, allocationOption }];
+      return [...prev, { id: generateId(), name, role, color, birthday, maxDaysOff, allocationOption, employmentPercentage }];
     });
     e.target.reset();
   }, []);
@@ -217,11 +221,15 @@ export function RosterProvider({ children }) {
     const birthday = formData.get('birthday');
     const maxDaysOff = formData.get('maxDaysOff');
     const allocationOption = formData.get('allocationOption') || '';
+    const rawEmploymentPercentage = Number.parseInt(formData.get('employmentPercentage'), 10);
+    const employmentPercentage = Number.isFinite(rawEmploymentPercentage)
+      ? Math.min(100, Math.max(1, rawEmploymentPercentage))
+      : 100;
 
     setEditingMember(prev => {
       if (!prev) return null;
       setMembers(mPrev => mPrev.map(m => m.id === prev.id
-        ? { ...m, name, role, birthday, maxDaysOff, allocationOption }
+        ? { ...m, name, role, birthday, maxDaysOff, allocationOption, employmentPercentage }
         : m
       ));
       return null;

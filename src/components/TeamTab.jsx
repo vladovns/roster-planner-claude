@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Users, UserPlus, Trash2, Pencil, ShieldCheck, Calendar, Gift, ChevronUp, ChevronDown, Clock } from 'lucide-react';
 import { useRoster } from '../context/RosterContext';
 import { formatDateDDMMYYYY } from '../utils/helpers';
 
 const fieldClass = "h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100";
 const labelClass = "text-xs font-semibold tracking-wide text-slate-600";
+const EMPLOYMENT_PRESETS = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10];
 
 export default function TeamTab() {
   const {
@@ -12,6 +13,14 @@ export default function TeamTab() {
     addMember, removeMember, moveMemberUp, moveMemberDown,
     setEditingMember,
   } = useRoster();
+  const [employmentPercentageChoice, setEmploymentPercentageChoice] = useState('100');
+  const [customEmploymentPercentage, setCustomEmploymentPercentage] = useState('');
+
+  const handleAddMember = (e) => {
+    addMember(e);
+    setEmploymentPercentageChoice('100');
+    setCustomEmploymentPercentage('');
+  };
 
   return (
     <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -24,7 +33,7 @@ export default function TeamTab() {
       </div>
 
       <div className="p-6 bg-slate-50 border-b border-slate-200">
-        <form onSubmit={addMember} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <form onSubmit={handleAddMember} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="min-w-0 flex flex-col gap-1.5">
             <label htmlFor="new-member-name" className={labelClass}>{t('full_name')}</label>
             <input id="new-member-name" type="text" name="name" placeholder={t('full_name')} required className={fieldClass + " text-slate-900"} />
@@ -40,10 +49,37 @@ export default function TeamTab() {
 
           <div className="min-w-0 flex flex-col gap-1.5">
             <label htmlFor="new-employment-percentage" className={labelClass}>{t('employment_percentage')}</label>
-            <div className="flex h-10 w-full min-w-0 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
-              <input id="new-employment-percentage" type="number" name="employmentPercentage" defaultValue="100" min="1" max="100" step="1" required aria-label={t('employment_percentage')} className="h-full w-full min-w-0 border-0 bg-transparent px-3 text-sm text-slate-700 focus:outline-none focus:ring-0" />
-              <span className="flex items-center border-l border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">%</span>
-            </div>
+            <select
+              id="new-employment-percentage"
+              name="employmentPercentageChoice"
+              value={employmentPercentageChoice}
+              onChange={(e) => setEmploymentPercentageChoice(e.target.value)}
+              required
+              className={fieldClass}
+            >
+              {EMPLOYMENT_PRESETS.map(percentage => <option key={percentage} value={String(percentage)}>{percentage}%</option>)}
+              <option value="custom">{t('employment_percentage_custom')}</option>
+            </select>
+            {employmentPercentageChoice === 'custom' ? (
+              <div className="mt-1 flex flex-col gap-1.5">
+                <label htmlFor="new-custom-employment-percentage" className={labelClass}>{t('custom_percentage_value')}</label>
+                <div className="flex h-10 w-full min-w-0 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm transition focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
+                  <input
+                    id="new-custom-employment-percentage"
+                    type="number"
+                    name="employmentPercentageCustom"
+                    value={customEmploymentPercentage}
+                    onChange={(e) => setCustomEmploymentPercentage(e.target.value)}
+                    min="1"
+                    max="100"
+                    step="1"
+                    required
+                    className="h-full w-full min-w-0 border-0 bg-transparent px-3 text-sm text-slate-700 focus:outline-none focus:ring-0"
+                  />
+                  <span className="flex items-center border-l border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">%</span>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="min-w-0 flex flex-col gap-1.5">

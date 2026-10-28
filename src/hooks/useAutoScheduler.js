@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { getDateKey, check11HourRest } from '../utils/helpers';
+import { getDateKey, check11HourRest, calculateShiftDuration } from '../utils/helpers';
 import { useRoster } from '../context/RosterContext';
 
 /**
